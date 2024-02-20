@@ -1,10 +1,14 @@
 use crate::github::{
-    builder::create_release_builder::CreateReleaseBuilder,
-    github_client::{GithubClient, GITHUB_TOKEN},
+    builder::{
+        create_pull_request_builder::CreatePullRequestBuilder,
+        create_release_builder::CreateReleaseBuilder,
+    },
+    github_client::{self, GithubClient, GITHUB_TOKEN},
     inner::Inner,
+    pull_request::PullRequest,
     release::Release,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use octocrab::Octocrab;
 
 impl GithubClient<Octocrab> {
@@ -55,5 +59,24 @@ impl Inner for Octocrab {
             .await?;
 
         Ok(Release::new(r.id.0, builder.owner, builder.repo))
+    }
+
+    async fn create_pull_request(&self, builder: CreatePullRequestBuilder) -> Result<PullRequest> {
+        let pr = self
+            .pulls(&builder.owner, &builder.repo)
+            .create(
+                &builder.title,
+                &builder.head.unwrap_or("bumps-formula-version".to_owned()),
+                &builder.base.unwrap_or("main".to_owned()),
+            )
+            // .body(&builder.body)
+            .draft(builder.draft.unwrap_or(false))
+            .send()
+            .await
+            .context("error creating the actual PR")?;
+
+        let pr = PullRequest::from(pr);
+
+        Ok(pr)
     }
 }

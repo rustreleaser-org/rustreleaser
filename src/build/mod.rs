@@ -21,7 +21,7 @@ impl Build {
 
     pub fn is_multi_arch(&self) -> bool {
         if let Some(archs) = &self.arch {
-            archs.len() > 1
+            archs.len() >= 1
         } else {
             false
         }
@@ -29,7 +29,7 @@ impl Build {
 
     pub fn is_multi_os(&self) -> bool {
         if let Some(oss) = &self.os {
-            oss.len() > 1
+            oss.len() >= 1
         } else {
             false
         }

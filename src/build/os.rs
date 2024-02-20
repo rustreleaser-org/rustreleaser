@@ -1,6 +1,8 @@
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Os {
+    #[serde(rename(deserialize = "darwin"))]
     AppleDarwin,
+    #[serde(rename(deserialize = "linux"))]
     UnknownLinuxGnu,
 }
 

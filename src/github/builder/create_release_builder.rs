@@ -1,4 +1,5 @@
-use crate::github::{github_client, handler::HandlerExecutor, inner::Inner, release::Release};
+use super::BuilderExecutor;
+use crate::github::{github_client, inner::Inner, release::Release};
 use anyhow::Result;
 
 pub struct CreateReleaseBuilder {
@@ -59,7 +60,7 @@ impl CreateReleaseBuilder {
     }
 }
 
-impl HandlerExecutor for CreateReleaseBuilder {
+impl BuilderExecutor for CreateReleaseBuilder {
     type Output = Release;
 
     async fn execute(self) -> Result<Release> {

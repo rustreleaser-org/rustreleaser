@@ -1,6 +1,5 @@
-use std::ops::{Deref, DerefMut};
-
 use reqwest::Client;
+use std::ops::{Deref, DerefMut};
 
 pub struct HttpClient {
     client: Client,

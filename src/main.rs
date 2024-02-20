@@ -7,25 +7,30 @@ mod github;
 mod http;
 mod logger;
 mod release;
-mod templating;
+mod template;
 
 use anyhow::Result;
 use config::Config;
-
-const SINGLE_TARGET_DIR: &str = "target/release";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     logger::init();
 
-    log::info!("Starting...");
+    log::info!("Starting");
 
     let config = Config::load().await?;
 
     let build_info = config.build;
     let release_info = config.release;
 
-    github::release(build_info, release_info).await?;
+    // create release
+    let packages = github::release(build_info, release_info).await?;
+
+    if config.brew.is_some() {
+        // create brew
+        // TODO pass single or multi target info to brew
+        brew::release(config.brew.unwrap(), packages).await?;
+    }
 
     Ok(())
 }

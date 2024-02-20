@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Arch {
+    #[serde(rename(deserialize = "x86_64"))]
+    #[serde(rename(deserialize = "amd64"))]
     Amd64,
     Arm,
     Arm64,
@@ -21,7 +23,7 @@ impl From<String> for Arch {
 impl ToString for Arch {
     fn to_string(&self) -> String {
         match self {
-            Arch::Amd64 => "amd64".to_string(),
+            Arch::Amd64 => "x86_64".to_string(),
             Arch::Arm => "arm".to_string(),
             Arch::Arm64 => "aarch64".to_string(),
         }
