@@ -51,7 +51,8 @@ pub struct PullRequestConfig {
     pub labels: Option<Vec<String>>,
     pub assignees: Option<Vec<String>>,
     pub milestone: Option<u64>,
-    pub draft: Option<bool>,
+    #[serde(default)]
+    pub draft: bool,
     pub base: Option<String>,
     pub head: Option<String>,
 }
@@ -61,7 +62,9 @@ pub struct ReleaseConfig {
     pub owner: String,
     pub repo: String,
     pub target_branch: String,
+    #[serde(default)]
     pub prerelease: bool,
+    #[serde(default)]
     pub draft: bool,
     pub name: String,
     pub body: Option<String>,
