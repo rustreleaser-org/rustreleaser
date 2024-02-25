@@ -1,5 +1,5 @@
 use super::BuilderExecutor;
-use crate::github::{builder::create_pull_request_builder::Commiter, github_client};
+use crate::github::{builder::create_pull_request_builder::Committer, github_client};
 
 pub struct UpsertFileBuilder {
     owner: String,
@@ -7,7 +7,7 @@ pub struct UpsertFileBuilder {
     path: String,
     commit_message: String,
     content: String,
-    commiter: Commiter,
+    committer: Committer,
     head: String,
 }
 
@@ -23,7 +23,7 @@ impl UpsertFileBuilder {
             path: "".to_string(),
             commit_message: "".to_string(),
             content: "".to_string(),
-            commiter: Commiter::default(),
+            committer: Committer::default(),
             head: branch.into(),
         }
     }
@@ -52,8 +52,8 @@ impl UpsertFileBuilder {
         self
     }
 
-    pub fn commiter(mut self, commiter: &Commiter) -> Self {
-        self.commiter = commiter.to_owned();
+    pub fn committer(mut self, committer: &Committer) -> Self {
+        self.committer = committer.to_owned();
         self
     }
 }
@@ -69,7 +69,7 @@ impl BuilderExecutor for UpsertFileBuilder {
                 &self.path,
                 &self.content,
                 self.commit_message,
-                self.commiter,
+                self.committer,
                 self.head,
             )
             .await

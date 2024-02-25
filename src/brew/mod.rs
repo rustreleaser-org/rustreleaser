@@ -8,7 +8,7 @@ use crate::{
     config::{BrewConfig, CommitterConfig, PullRequestConfig},
     git,
     github::{
-        builder::{create_pull_request_builder::Commiter, BuilderExecutor},
+        builder::{create_pull_request_builder::Committer, BuilderExecutor},
         github_client,
     },
     template::{handlebars, Template},
@@ -186,7 +186,7 @@ fn captalize(mut s: String) -> String {
 async fn push_formula(brew: Brew) -> Result<()> {
     let pull_request = brew.pull_request.unwrap();
 
-    let commiter: Commiter = brew.commit_author.map(|c| c.into()).unwrap_or_default();
+    let committer: Committer = brew.commit_author.map(|c| c.into()).unwrap_or_default();
 
     let head_branch = pull_request
         .head
@@ -224,7 +224,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .path(format!("{}.rb", brew.name))
         .message(brew.commit_message)
         .content(content)
-        .commiter(&commiter)
+        .committer(&committer)
         .execute()
         .await
         .context("error uploading file to head branch")?;
@@ -239,7 +239,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .body(pull_request.body.unwrap_or_default())
         .labels(pull_request.labels.unwrap_or_default())
         .title(pull_request.title.unwrap_or_default())
-        .commiter(&commiter)
+        .committer(&committer)
         .execute()
         .await
         .context("error creating pull request")?;
@@ -247,9 +247,9 @@ async fn push_formula(brew: Brew) -> Result<()> {
     Ok(())
 }
 
-impl From<CommitterConfig> for Commiter {
+impl From<CommitterConfig> for Committer {
     fn from(value: CommitterConfig) -> Self {
-        Commiter {
+        Committer {
             author: value.name,
             email: value.email,
         }

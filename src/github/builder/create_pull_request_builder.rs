@@ -8,20 +8,20 @@ pub struct CreatePullRequestBuilder {
     pub body: Option<String>,
     pub labels: Option<Vec<String>>,
     pub assignees: Option<Vec<String>>,
-    pub commiter: Option<Commiter>,
+    pub committer: Option<Committer>,
     pub base: Option<String>,
     pub head: Option<String>,
 }
 
 #[derive(Clone)]
-pub struct Commiter {
+pub struct Committer {
     pub author: String,
     pub email: String,
 }
 
-impl Default for Commiter {
+impl Default for Committer {
     fn default() -> Self {
-        Commiter {
+        Committer {
             author: "Rafael Vigo".to_string(),
             email: "rvigo07+github@gmail.com".to_string(),
         }
@@ -40,7 +40,7 @@ impl CreatePullRequestBuilder {
             body: None,
             labels: None,
             assignees: None,
-            commiter: None,
+            committer: None,
             base: None,
             head: None,
         }
@@ -72,8 +72,8 @@ impl CreatePullRequestBuilder {
         self
     }
 
-    pub fn commiter(mut self, commiter: &Commiter) -> Self {
-        self.commiter = Some(commiter.to_owned());
+    pub fn committer(mut self, committer: &Committer) -> Self {
+        self.committer = Some(committer.to_owned());
         self
     }
 

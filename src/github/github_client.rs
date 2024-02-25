@@ -2,7 +2,7 @@ use crate::github::release::{Release, ReleaseResponse};
 
 use super::{
     asset::{Asset, UploadedAsset},
-    builder::create_pull_request_builder::Commiter,
+    builder::create_pull_request_builder::Committer,
     handler::repository_handler::RepositoryHandler,
     model::{pull_request::PullRequest, sha::Sha},
 };
@@ -210,17 +210,17 @@ impl GithubClient {
         path: &str,
         content: &str,
         commit_message: String,
-        commiter: Commiter,
+        committer: Committer,
         head: String,
     ) -> Result<()> {
         let content = BASE64_STANDARD.encode(content.as_bytes());
 
-        let mut commiter_map = HashMap::new();
+        let mut committer_map = HashMap::new();
 
-        commiter_map.insert("name", commiter.author);
-        commiter_map.insert("email", commiter.email);
+        committer_map.insert("name", committer.author);
+        committer_map.insert("email", committer.email);
 
-        let commiter = serde_json::to_string(&commiter_map)?;
+        let committer = serde_json::to_string(&committer_map)?;
 
         let file_sha = get!(&format!(
             "https://api.github.com/repos/{}/{}/contents/{}",
@@ -238,7 +238,7 @@ impl GithubClient {
             body.insert("message", commit_message);
             body.insert("branch", head);
             body.insert("content", content);
-            body.insert("commiter", commiter);
+            body.insert("committer", committer);
             body.insert("sha", sha.sha);
 
             let body: String = serde_json::to_string(&body)?;
@@ -249,7 +249,7 @@ impl GithubClient {
 
             body.insert("message", commit_message);
             body.insert("content", content);
-            body.insert("commiter", commiter);
+            body.insert("committer", committer);
             body.insert("sha", sha.sha);
 
             let body: String = serde_json::to_string(&body)?;
