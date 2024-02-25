@@ -1,10 +1,12 @@
-use crate::github::{builder::upsert_file_builder::UpsertFileBuilder, github_client, sha::Sha};
+use crate::github::{
+    builder::upsert_file_builder::UpsertFileBuilder, github_client, model::sha::Sha,
+};
 use anyhow::Result;
 
 pub struct BranchHandler {
     owner: String,
     repo: String,
-    branch: String,
+    base: String,
 }
 
 impl BranchHandler {
@@ -15,7 +17,7 @@ impl BranchHandler {
         BranchHandler {
             owner: owner.into(),
             repo: repo.into(),
-            branch: branch.into(),
+            base: branch.into(),
         }
     }
 
@@ -23,13 +25,13 @@ impl BranchHandler {
         UpsertFileBuilder::new(
             self.owner.to_owned(),
             self.repo.to_owned(),
-            self.branch.to_owned(),
+            self.base.to_owned(),
         )
     }
 
     pub async fn get_commit_sha(&self) -> Result<Sha> {
         github_client::instance()
-            .get_commit_sha(&self.owner, &self.repo, &self.branch)
+            .get_commit_sha(&self.owner, &self.repo, &self.base)
             .await
     }
 }

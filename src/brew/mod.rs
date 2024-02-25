@@ -10,9 +10,8 @@ use crate::{
     github::{
         builder::{create_pull_request_builder::Commiter, BuilderExecutor},
         github_client,
-        pull_request::PullRequest,
     },
-    template::handlebars,
+    template::{handlebars, Template},
 };
 use anyhow::{Context, Result};
 use itertools::Itertools;
@@ -62,9 +61,21 @@ impl Brew {
 pub struct Targets(pub Vec<Target>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Target {
+pub struct MultiTarget {
     pub os: Os,
     pub archs: Vec<BrewArch>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SingleTarget {
+    pub url: String,
+    pub hash: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Target {
+    Single(SingleTarget),
+    Multi(MultiTarget),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,36 +86,56 @@ pub struct BrewArch {
 }
 
 impl From<Vec<Package>> for Targets {
-    fn from(value: Vec<Package>) -> Self {
-        let group = value
-            .iter()
-            .cloned()
-            .group_by(|p| p.os.to_owned())
-            .into_iter()
-            .map(|g| Target {
-                os: g.0.unwrap(),
-                archs: g
-                    .1
-                    .map(|p| BrewArch {
-                        arch: p.arch.to_owned().unwrap(),
-                        url: p.url.clone(),
-                        hash: p.sha256.clone(),
-                    })
-                    .collect(),
-            })
-            .collect::<Vec<Target>>();
+    fn from(value: Vec<Package>) -> Targets {
+        let v: Vec<Target> = if value.len() == 1 {
+            let target = vec![Target::Single(SingleTarget {
+                url: value[0].url.clone(),
+                hash: value[0].sha256.clone(),
+            })];
+            target
+        } else {
+            let group = value
+                .iter()
+                .cloned()
+                .group_by(|p| p.os.to_owned())
+                .into_iter()
+                .map(|g| MultiTarget {
+                    os: g.0.unwrap(),
+                    archs: g
+                        .1
+                        .map(|p| BrewArch {
+                            arch: p.arch.to_owned().unwrap(),
+                            url: p.url.clone(),
+                            hash: p.sha256.clone(),
+                        })
+                        .collect(),
+                })
+                .map(|t| Target::Multi(t))
+                .collect();
 
-        Targets(group)
+            group
+        };
+
+        Targets(v)
     }
 }
 
-pub async fn release(brew_config: BrewConfig, packages: Vec<Package>) -> Result<String> {
+pub async fn release(
+    brew_config: BrewConfig,
+    packages: Vec<Package>,
+    is_multitarget: bool,
+) -> Result<String> {
     log::info!("Creating brew file");
 
     let brew = Brew::new(brew_config, git::get_current_tag()?, packages);
-
     log::info!("Rendering Formula template");
-    let data = serialize_brew(&brew)?;
+    let template = if is_multitarget {
+        Template::MultiTarget
+    } else {
+        Template::SingleTarget
+    };
+
+    let data = serialize_brew(&brew, template)?;
 
     write_file(format!("{}.rb", brew.name), &data)?;
 
@@ -116,12 +147,12 @@ pub async fn release(brew_config: BrewConfig, packages: Vec<Package>) -> Result<
     Ok(data)
 }
 
-fn serialize_brew<T>(data: &T) -> Result<String>
+fn serialize_brew<T>(data: &T, template: Template) -> Result<String>
 where
     T: Serialize,
 {
     let hb = handlebars()?;
-    let rendered = hb.render("multi_target", data)?;
+    let rendered = hb.render(&template.to_string(), data)?;
     Ok(rendered)
 }
 
@@ -137,20 +168,22 @@ fn captalize(mut s: String) -> String {
     format!("{}{s}", s.remove(0).to_uppercase())
 }
 
-async fn push_formula(brew: Brew) -> Result<PullRequest> {
+async fn push_formula(brew: Brew) -> Result<()> {
     let pull_request = brew.pull_request.unwrap();
 
     let commiter: Commiter = brew.commit_author.map(|c| c.into()).unwrap_or_default();
 
     let head_branch = pull_request
         .head
-        .unwrap_or(format!("bumps-formula-version"));
+        .unwrap_or("bumps-formula-version".to_owned());
+
+    let base_branch = pull_request.base.unwrap_or("main".to_owned());
 
     let repo_handler =
         github_client::instance().repo(&brew.repository.owner, &brew.repository.name);
 
     let sha = repo_handler
-        .branch(&head_branch)
+        .branch(&base_branch)
         .get_commit_sha()
         .await
         .context("error getting the base branch commit sha")?;
@@ -177,23 +210,21 @@ async fn push_formula(brew: Brew) -> Result<PullRequest> {
         .await
         .context("error uploading file to head branch")?;
 
-    let pr = repo_handler
+    repo_handler
         .pull_request()
         .create()
         .assignees(pull_request.assignees.unwrap_or_default())
-        .base(pull_request.base.unwrap_or("main".to_owned()))
+        .base(base_branch)
         .head(head_branch)
         .body(pull_request.body.unwrap_or_default())
-        .draft(pull_request.draft.unwrap_or(false))
         .labels(pull_request.labels.unwrap_or_default())
-        .milestone(pull_request.milestone.unwrap_or_default())
         .title(pull_request.title.unwrap_or_default())
         .commiter(&commiter)
         .execute()
         .await
         .context("error creating pull request")?;
 
-    Ok(pr)
+    Ok(())
 }
 
 impl From<CommitterConfig> for Commiter {

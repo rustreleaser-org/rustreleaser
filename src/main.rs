@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
     if config.brew.is_some() {
         // create brew
         // TODO pass single or multi target info to brew
-        brew::release(config.brew.unwrap(), packages).await?;
+        brew::release(config.brew.unwrap(), packages, false).await?;
     }
 
     Ok(())

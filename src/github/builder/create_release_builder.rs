@@ -1,5 +1,5 @@
 use super::BuilderExecutor;
-use crate::github::{github_client, inner::Inner, release::Release};
+use crate::github::{github_client, release::Release};
 use anyhow::Result;
 
 pub struct CreateReleaseBuilder {
@@ -65,8 +65,15 @@ impl BuilderExecutor for CreateReleaseBuilder {
 
     async fn execute(self) -> Result<Release> {
         github_client::instance()
-            .get_inner()
-            .create_release(self)
+            .create_release(
+                &self.owner,
+                &self.repo,
+                &self.release_tag.unwrap(),
+                &self.target_branch.unwrap(),
+                &self.release_name.unwrap(),
+                self.draft.unwrap(),
+                self.prerelease.unwrap(),
+            )
             .await
     }
 }

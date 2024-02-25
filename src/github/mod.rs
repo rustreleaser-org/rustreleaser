@@ -3,11 +3,8 @@ pub mod asset;
 pub mod builder;
 pub mod github_client;
 pub mod handler;
-mod inner;
-pub mod pull_request;
-mod release;
-pub mod sha;
-mod underlayer;
+pub mod model;
+pub mod release;
 
 use self::{
     arch_os_matrix::ArchOsMatrixEntry, asset::UploadedAsset, builder::BuilderExecutor,
@@ -24,6 +21,7 @@ use anyhow::{bail, Result};
 use flate2::{write::GzEncoder, Compression};
 use std::{
     fs::{self, File},
+    future::Future,
     io::Write,
     path::{Path, PathBuf},
     vec,
@@ -88,7 +86,6 @@ async fn single(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pa
     let tag = git::get_current_tag()?;
 
     // calculate full binary name
-
     let binary_name = if tag.is_empty() {
         format!(
             "{}.{}",
@@ -130,28 +127,16 @@ async fn single(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pa
 
     // create release
     log::info!("creating release");
-    // TODO improve this flow
-    let release = match do_create_release(release_info.to_owned(), &tag).await {
-        Ok(release) => release,
-        Err(e) => {
-            log::error!("Failed to create release {:#?}", e.root_cause());
-            log::info!("Trying to get release by tag");
-            match get_release_by_tag(release_info, &tag).await {
-                Ok(release) => release,
-                Err(e) => {
-                    log::error!("Failed to get release by tag {:#?}", e.root_cause());
-                    bail!(anyhow::anyhow!("Failed to create or get release"))
-                }
-            }
-        }
-    };
+
+    log::info!("release_info: {:#?}", release_info);
+    let release = get_release(release_info, &tag, do_create_release, get_release_by_tag).await?;
 
     // upload to release
     log::info!("uploading asset");
     let uploaded_assets = match release.upload_assets(vec![asset], &tag).await {
         Ok(uploaded_assets) => uploaded_assets,
         Err(e) => {
-            log::error!("Failed to upload asset {:#?}", e.root_cause());
+            log::error!("Failed to upload asset {:#?}", e);
             bail!(anyhow::anyhow!("Failed to upload asset"))
         }
     };
@@ -205,7 +190,7 @@ async fn multi(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pac
 
             // generate a checksum value
             let checksum = generate_checksum(&asset)
-                .expect(format!("Failed to generate checksum for asset {:#?}", asset).as_str());
+                .unwrap_or_else(|_| panic!("Failed to generate checksum for asset {:#?}", asset));
 
             // add checksum to asset
             asset.add_checksum(checksum);
@@ -215,14 +200,7 @@ async fn multi(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pac
         }
     }
 
-    let release = match do_create_release(release_info.to_owned(), &tag).await {
-        Ok(release) => release,
-        Err(e) => {
-            log::error!("Failed to create release {:#?}", e.root_cause());
-            log::info!("Trying to get release by tag");
-            get_release_by_tag(release_info, &tag).await?
-        }
-    };
+    let release = get_release(release_info, &tag, do_create_release, get_release_by_tag).await?;
 
     let assets: Vec<Asset> = matrix
         .iter()
@@ -286,17 +264,50 @@ async fn do_create_release(release_info: ReleaseConfig, tag: impl Into<String>) 
         .create()
         .tag(tag)
         .target_branch(&release_info.target_branch)
-        .name(&release_info.repo)
+        .name(&release_info.name)
         .draft(release_info.draft)
         .prerelease(release_info.prerelease)
         .execute()
         .await
 }
 
-async fn get_release_by_tag(release_info: ReleaseConfig, tag: &str) -> Result<Release> {
+async fn get_release_by_tag(
+    release_info: ReleaseConfig,
+    tag: impl Into<String>,
+) -> Result<Release> {
     github_client::instance()
         .repo(&release_info.owner, &release_info.repo)
         .releases()
-        .get_by_tag(tag)
+        .get_by_tag(&tag.into())
         .await
+}
+
+async fn get_release<S, F, C, FO, CO>(
+    release_info: ReleaseConfig,
+    tag: S,
+    function: F,
+    callback: C,
+) -> Result<Release>
+where
+    S: Into<String> + Copy,
+    F: FnOnce(ReleaseConfig, S) -> FO,
+    C: FnOnce(ReleaseConfig, S) -> CO,
+    FO: Future<Output = Result<Release>>,
+    CO: Future<Output = Result<Release>>,
+{
+    let res = function(release_info.to_owned(), tag).await;
+    match res {
+        Ok(release) => {
+            log::info!("release_info: {:#?}", release_info);
+            Ok(release)
+        }
+        Err(err) => {
+            log::warn!(
+                "cannot create a release, trying to get the release by tag: {:#?}",
+                err
+            );
+            log::info!("release_info: {:#?}", release_info);
+            callback(release_info, tag).await
+        }
+    }
 }

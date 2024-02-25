@@ -20,8 +20,8 @@ where
 {
     fmt::layer()
         .without_time()
-        .event_format(Format::default().with_source_location(false).without_time())
+        .event_format(Format::default().with_source_location(true).without_time())
         .fmt_fields(PrettyFields::new())
         .with_target(false)
-        .with_filter(LevelFilter::INFO)
+        .with_filter(LevelFilter::DEBUG)
 }

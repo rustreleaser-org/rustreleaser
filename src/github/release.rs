@@ -4,7 +4,9 @@ use crate::{
     github::{asset::Asset, github_client},
 };
 use anyhow::{bail, Result};
+use serde::Deserialize;
 
+#[derive(Debug, Deserialize)]
 pub struct Release {
     pub owner: String,
     pub repo: String,
@@ -34,7 +36,7 @@ impl Release {
             log::info!("Uploaded asset: {:#?}", uploaded_asset);
             uploaded.push(uploaded_asset);
 
-            if let Err(err) = self.upload_checksum_asset(&asset, &tag).await {
+            if let Err(err) = self.upload_checksum_asset(&asset, tag).await {
                 bail!(err)
             }
         }
@@ -50,4 +52,9 @@ impl Release {
         log::info!("Uploaded checksum asset: {:#?}", ua);
         Ok(())
     }
+}
+
+#[derive(Deserialize)]
+pub struct ReleaseResponse {
+    pub id: u64,
 }

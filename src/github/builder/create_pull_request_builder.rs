@@ -1,5 +1,5 @@
 use super::BuilderExecutor;
-use crate::github::{github_client, inner::Inner, pull_request::PullRequest};
+use crate::github::{github_client, model::pull_request::PullRequest};
 
 pub struct CreatePullRequestBuilder {
     pub owner: String,
@@ -7,9 +7,7 @@ pub struct CreatePullRequestBuilder {
     pub title: String,
     pub body: Option<String>,
     pub labels: Option<Vec<String>>,
-    pub milestone: Option<u64>,
     pub assignees: Option<Vec<String>>,
-    pub draft: Option<bool>,
     pub commiter: Option<Commiter>,
     pub base: Option<String>,
     pub head: Option<String>,
@@ -41,9 +39,7 @@ impl CreatePullRequestBuilder {
             title: String::new(),
             body: None,
             labels: None,
-            milestone: None,
             assignees: None,
-            draft: None,
             commiter: None,
             base: None,
             head: None,
@@ -71,18 +67,8 @@ impl CreatePullRequestBuilder {
         self
     }
 
-    pub fn milestone(mut self, milestone: u64) -> Self {
-        self.milestone = Some(milestone);
-        self
-    }
-
     pub fn assignees(mut self, assignees: Vec<String>) -> Self {
         self.assignees = Some(assignees);
-        self
-    }
-
-    pub fn draft(mut self, draft: bool) -> Self {
-        self.draft = Some(draft);
         self
     }
 
@@ -113,8 +99,16 @@ impl BuilderExecutor for CreatePullRequestBuilder {
 
     async fn execute(self) -> anyhow::Result<Self::Output> {
         github_client::instance()
-            .get_inner()
-            .create_pull_request(self)
+            .create_pull_request(
+                &self.owner,
+                &self.repo,
+                &self.title,
+                &self.head.unwrap(),
+                &self.base.unwrap(),
+                self.body,
+                self.assignees.unwrap_or_default(),
+                self.labels.unwrap_or_default(),
+            )
             .await
     }
 }
