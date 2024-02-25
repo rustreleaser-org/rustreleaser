@@ -33,7 +33,7 @@ impl Release {
             let uploaded_asset = github_client::instance()
                 .upload_asset(&asset, &self.owner, tag, &self.repo, self.id)
                 .await?;
-            log::info!("Uploaded asset: {:#?}", uploaded_asset);
+            log::debug!("Uploaded asset: {:#?}", uploaded_asset);
             uploaded.push(uploaded_asset);
 
             if let Err(err) = self.upload_checksum_asset(&asset, tag).await {
@@ -49,7 +49,7 @@ impl Release {
         let ua = github_client::instance()
             .upload_asset(&checksum_asset, &self.owner, tag, &self.repo, self.id)
             .await?;
-        log::info!("Uploaded checksum asset: {:#?}", ua);
+        log::debug!("Uploaded checksum asset: {:#?}", ua);
         Ok(())
     }
 }

@@ -129,8 +129,12 @@ impl GithubClient {
             }
         }
 
-        let tag = tag.into();
-
+        let tag: String = tag.into();
+        let tag = if tag.starts_with("v") {
+            tag.strip_prefix("v").unwrap_or_default()
+        } else {
+            &tag
+        };
         let asset_url = format!(
             "https://github.com/{}/{}/releases/download/v{}/{}",
             &owner, &repo, &tag, asset.name
@@ -171,7 +175,7 @@ impl GithubClient {
         let response = get!(&uri);
 
         let response = response.text().await?;
-        log::debug!("response: {}", response);
+        // log::debug!("response: {}", response);
 
         let sha = Sha { sha: response };
 
@@ -196,7 +200,7 @@ impl GithubClient {
 
         let response = post!(&uri, body);
 
-        log::debug!("response: {}", response.text().await?);
+        // log::debug!("response: {}", response.text().await?);
 
         Ok(())
     }
@@ -232,8 +236,6 @@ impl GithubClient {
         let sha = serde_json::from_str::<Sha>(&file_sha).unwrap_or_default();
 
         let body = if sha.sha.is_empty() {
-            log::info!("creating file");
-
             let mut body = HashMap::new();
 
             body.insert("message", message);
@@ -246,8 +248,6 @@ impl GithubClient {
 
             body
         } else {
-            log::info!("updating file");
-
             let mut body = HashMap::new();
 
             body.insert("message", message);
@@ -267,7 +267,7 @@ impl GithubClient {
 
         let response = put!(uri, body).text().await?;
 
-        log::debug!("response: {}", response);
+        // log::debug!("response: {}", response);
 
         Ok(())
     }
@@ -296,7 +296,7 @@ impl GithubClient {
 
         let response = post!(&uri, body).text().await?;
 
-        log::debug!("response: {}", response);
+        // log::debug!("response: {}", response);
 
         let pr: PullRequest = serde_json::from_str(&response)?;
         if !assigness.is_empty() {
@@ -332,7 +332,7 @@ impl GithubClient {
 
         let response = post!(&uri, body).text().await?;
 
-        log::debug!("response: {}", response);
+        // log::debug!("response: {}", response);
         Ok(())
     }
 
@@ -356,7 +356,7 @@ impl GithubClient {
 
         let response = post!(&uri, body).text().await?;
 
-        log::debug!("response: {}", response);
+        // log::debug!("response: {}", response);
         Ok(())
     }
 
@@ -383,7 +383,7 @@ impl GithubClient {
         let body: String = serde_json::to_string(&body)?;
 
         let response = post!(&uri, body).text().await?;
-        log::debug!("response: {}", response);
+        // log::debug!("response: {}", response);
 
         let release = serde_json::from_str::<ReleaseResponse>(&response)?;
         Ok(Release::new(release.id, owner, repo))
@@ -396,7 +396,7 @@ impl GithubClient {
         );
 
         let response = get!(&uri).text().await?;
-        log::debug!("response: {}", response);
+        // log::debug!("response: {}", response);
         let release = serde_json::from_str::<ReleaseResponse>(&response)?;
         Ok(Release::new(release.id, owner, repo))
     }

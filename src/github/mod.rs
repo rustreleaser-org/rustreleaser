@@ -69,10 +69,10 @@ fn package_asset(asset: &UploadedAsset, os: Option<&Os>, arch: Option<&Arch>) ->
 
 pub async fn release(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Package>> {
     let packages = if build_info.is_multi_target() {
-        log::info!("Running multi target");
+        log::debug!("Running multi target");
         multi(build_info, release_info).await?
     } else {
-        log::info!("Running single target");
+        log::debug!("Running single target");
         single(build_info, release_info).await?
     };
 
@@ -104,7 +104,7 @@ async fn single(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pa
     log::debug!("binary name: {}", binary_name);
 
     // zip binary
-    log::info!("zipping binary");
+    log::debug!("zipping binary");
     zip_file(
         &build_info.binary.to_owned(),
         &binary_name.to_owned(),
@@ -114,25 +114,24 @@ async fn single(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pa
     let path = PathBuf::from(binary_name.to_owned());
 
     // create an asset
-    log::info!("creating asset");
+    log::debug!("creating asset");
     let mut asset = create_asset(binary_name, path);
 
     // generate a checksum value
-    log::info!("generating checksum");
+    log::debug!("generating checksum");
     let checksum = generate_checksum(&asset)?;
 
     // add checksum to asset
-    log::info!("adding checksum to asset");
+    log::debug!("adding checksum to asset");
     asset.add_checksum(checksum);
 
     // create release
-    log::info!("creating release");
+    log::debug!("creating release");
 
-    log::info!("release_info: {:#?}", release_info);
     let release = get_release(release_info, &tag, do_create_release, get_release_by_tag).await?;
 
     // upload to release
-    log::info!("uploading asset");
+    log::debug!("uploading asset");
     let uploaded_assets = match release.upload_assets(vec![asset], &tag).await {
         Ok(uploaded_assets) => uploaded_assets,
         Err(e) => {
@@ -151,12 +150,7 @@ async fn single(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pa
 }
 
 async fn multi(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Package>> {
-    // FIXME
-    let tag = if git::get_current_tag()?.is_empty() {
-        "v9.9.9".to_owned()
-    } else {
-        git::get_current_tag()?
-    };
+    let tag = git::get_current_tag()?;
 
     let archs = build_info.arch.unwrap_or_default();
     let os = build_info.os.unwrap_or_default();
@@ -174,7 +168,7 @@ async fn multi(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pac
 
             let target = format!("{}-{}", &arch.to_string(), &os.to_string());
 
-            log::info!("zipping binary for {}", target);
+            log::debug!("zipping binary for {}", target);
 
             let entry_name = entry.name.to_owned();
 
@@ -242,7 +236,7 @@ fn zip_file(binary_name: &str, full_binary_name: &str, binary_path: PathBuf) -> 
 }
 
 fn check_binary(name: &str, target: Option<String>) -> Result<()> {
-    log::info!("checking binary: {} - {:#?}", name, target);
+    log::debug!("checking binary: {} - {:#?}", name, target);
     let binary_path = if let Some(target) = target {
         format!("target/{}/release/{}", target, name)
     } else {
@@ -297,16 +291,12 @@ where
 {
     let res = function(release_info.to_owned(), tag).await;
     match res {
-        Ok(release) => {
-            log::info!("release_info: {:#?}", release_info);
-            Ok(release)
-        }
+        Ok(release) => Ok(release),
         Err(err) => {
             log::warn!(
                 "cannot create a release, trying to get the release by tag: {:#?}",
                 err
             );
-            log::info!("release_info: {:#?}", release_info);
             callback(release_info, tag).await
         }
     }

@@ -87,7 +87,9 @@ pub struct BrewArch {
 
 impl From<Vec<Package>> for Targets {
     fn from(value: Vec<Package>) -> Targets {
-        let v: Vec<Target> = if value.len() == 1 {
+        let v: Vec<Target> = if value.is_empty() {
+            vec![]
+        } else if value[0].arch.is_none() && value[0].os.is_none() {
             let target = vec![Target::Single(SingleTarget {
                 url: value[0].url.clone(),
                 hash: value[0].sha256.clone(),
@@ -125,23 +127,31 @@ pub async fn release(
     packages: Vec<Package>,
     is_multitarget: bool,
 ) -> Result<String> {
-    log::info!("Creating brew file");
-
     let brew = Brew::new(brew_config, git::get_current_tag()?, packages);
-    log::info!("Rendering Formula template");
     let template = if is_multitarget {
         Template::MultiTarget
     } else {
         Template::SingleTarget
     };
-
+    log::debug!("Rendering Formula template {}", template.to_string());
     let data = serialize_brew(&brew, template)?;
 
     write_file(format!("{}.rb", brew.name), &data)?;
 
     if brew.pull_request.is_some() {
-        log::info!("Creating pull request");
+        log::debug!("Creating pull request");
         push_formula(brew).await?;
+    } else {
+        github_client::instance()
+            .repo(&brew.repository.owner, &brew.repository.name)
+            .branch(&brew.head.unwrap_or("main".to_owned()))
+            .upsert_file()
+            .path(format!("{}.rb", brew.name))
+            .message(brew.commit_message.unwrap_or("update formula".to_owned()))
+            .content(&data)
+            .execute()
+            .await
+            .context("error uploading file to main branch")?;
     }
 
     Ok(data)
@@ -182,6 +192,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
     let repo_handler =
         github_client::instance().repo(&brew.repository.owner, &brew.repository.name);
 
+    log::debug!("Creating branch");
     let sha = repo_handler
         .branch(&base_branch)
         .get_commit_sha()
@@ -199,6 +210,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
 
     let content = fs::read_to_string(format!("{}.rb", brew.name))?;
 
+    log::debug!("Updating formula");
     repo_handler
         .branch(&head_branch)
         .upsert_file()
@@ -210,6 +222,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .await
         .context("error uploading file to head branch")?;
 
+    log::debug!("Creating pull request");
     repo_handler
         .pull_request()
         .create()

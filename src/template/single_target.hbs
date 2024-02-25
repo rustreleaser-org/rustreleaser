@@ -14,8 +14,8 @@ class {{ repo }} < Formula
     {{ #if license }}
     license "{{ license }}"
     {{ /if }}
-    url "{{ url }}"
-    hash "{{ hash }}"
+    url "{{ targets.0.Single.url }}"
+    hash "{{ targets.0.Single.hash }}"
 
     def install
         "{{ ../../install_info }}"

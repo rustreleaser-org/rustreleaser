@@ -14,7 +14,7 @@ use config::Config;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    logger::init();
+    logger::init()?;
 
     log::info!("Starting");
 
@@ -23,12 +23,11 @@ async fn main() -> Result<()> {
     let build_info = config.build;
     let release_info = config.release;
 
-    // create release
+    log::info!("Creating release");
     let packages = github::release(build_info, release_info).await?;
 
     if config.brew.is_some() {
-        // create brew
-        // TODO pass single or multi target info to brew
+        log::info!("Creating brew formula");
         brew::release(config.brew.unwrap(), packages, false).await?;
     }
 
