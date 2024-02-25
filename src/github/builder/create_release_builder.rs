@@ -1,12 +1,12 @@
 use super::BuilderExecutor;
-use crate::github::{github_client, release::Release};
+use crate::github::{github_client, release::Release, tag::Tag};
 use anyhow::Result;
 
 pub struct CreateReleaseBuilder {
     pub owner: String,
     pub repo: String,
     pub release_name: Option<String>,
-    pub release_tag: Option<String>,
+    pub release_tag: Option<Tag>,
     pub target_branch: Option<String>,
     pub draft: Option<bool>,
     pub prerelease: Option<bool>,
@@ -35,11 +35,8 @@ impl CreateReleaseBuilder {
         self
     }
 
-    pub fn tag<S>(mut self, release_tag: S) -> Self
-    where
-        S: Into<String>,
-    {
-        self.release_tag = Some(release_tag.into());
+    pub fn tag(mut self, release_tag: &Tag) -> Self {
+        self.release_tag = Some(release_tag.to_owned());
         self
     }
 

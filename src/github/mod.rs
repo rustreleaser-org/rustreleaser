@@ -211,7 +211,7 @@ fn check_binary(name: &str, target: Option<String>) -> Result<()> {
     Ok(())
 }
 
-async fn do_create_release(release_info: ReleaseConfig, tag: impl Into<String>) -> Result<Release> {
+async fn do_create_release(release_info: ReleaseConfig, tag: &Tag) -> Result<Release> {
     github_client::instance()
         .repo(&release_info.owner, &release_info.repo)
         .releases()
@@ -226,14 +226,11 @@ async fn do_create_release(release_info: ReleaseConfig, tag: impl Into<String>) 
         .await
 }
 
-async fn get_release_by_tag(
-    release_info: ReleaseConfig,
-    tag: impl Into<String>,
-) -> Result<Release> {
+async fn get_release_by_tag(release_info: ReleaseConfig, tag: &Tag) -> Result<Release> {
     github_client::instance()
         .repo(&release_info.owner, &release_info.repo)
         .releases()
-        .get_by_tag(&tag.into())
+        .get_by_tag(&tag)
         .await
 }
 
@@ -244,12 +241,12 @@ async fn get_release<'tag, F, C, FO, CO>(
     callback: C,
 ) -> Result<Release>
 where
-    F: FnOnce(ReleaseConfig, &'tag str) -> FO,
-    C: FnOnce(ReleaseConfig, &'tag str) -> CO,
+    F: FnOnce(ReleaseConfig, &'tag Tag) -> FO,
+    C: FnOnce(ReleaseConfig, &'tag Tag) -> CO,
     FO: Future<Output = Result<Release>>,
     CO: Future<Output = Result<Release>>,
 {
-    let res = function(release_info.to_owned(), tag.value()).await;
+    let res = function(release_info.to_owned(), tag).await;
     match res {
         Ok(release) => Ok(release),
         Err(err) => {
@@ -257,7 +254,7 @@ where
                 "cannot create a release, trying to get the release by tag: {:?}",
                 err
             );
-            callback(release_info, tag.value()).await
+            callback(release_info, tag).await
         }
     }
 }

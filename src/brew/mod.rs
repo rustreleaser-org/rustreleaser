@@ -38,6 +38,7 @@ pub struct Brew {
     pub commit_author: Option<CommitterConfig>,
     pub install_info: Install,
     pub repository: Repository,
+    #[serde(flatten)]
     pub version: Tag,
     pub pull_request: Option<PullRequestConfig>,
     pub targets: Targets,

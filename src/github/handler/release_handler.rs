@@ -1,7 +1,6 @@
 use crate::github::{
-    builder::create_release_builder::CreateReleaseBuilder,
-    github_client::{self},
-    release::Release,
+    builder::create_release_builder::CreateReleaseBuilder, github_client, release::Release,
+    tag::Tag,
 };
 use anyhow::Result;
 
@@ -25,7 +24,7 @@ impl ReleaseHandler {
         CreateReleaseBuilder::new(self.owner.to_owned(), self.repo.to_owned())
     }
 
-    pub async fn get_by_tag(&self, tag: &str) -> Result<Release> {
+    pub async fn get_by_tag(&self, tag: &Tag) -> Result<Release> {
         github_client::instance()
             .get_release_by_tag(&self.owner, &self.repo, tag)
             .await

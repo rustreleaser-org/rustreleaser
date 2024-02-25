@@ -3,6 +3,7 @@ use super::{
     handler::repository_handler::RepositoryHandler,
     request::{branch_ref_request::BranchRefRequest, create_release_request::CreateReleaseRequest},
     response::{
+        assignees_request::AssigneesRequest, labels_request::LabelsRequest,
         pull_request_response::PullRequest, release_response::ReleaseResponse, sha_response::Sha,
     },
     tag::Tag,
@@ -218,7 +219,7 @@ impl GithubClient {
         &self,
         owner: &str,
         repo: &str,
-        tag: &str,
+        tag: &Tag,
         target_branch: &str,
         release_name: &str,
         draft: bool,
@@ -228,7 +229,7 @@ impl GithubClient {
         let uri = format!("https://api.github.com/repos/{}/{}/releases", owner, repo);
 
         let request = CreateReleaseRequest::new(
-            tag.to_owned(),
+            tag.value().to_owned(),
             target_branch.to_owned(),
             release_name.to_owned(),
             body.to_owned(),
@@ -249,11 +250,13 @@ impl GithubClient {
         &self,
         owner: &str,
         repo: &str,
-        tag: &str,
+        tag: &Tag,
     ) -> Result<Release> {
         let uri = format!(
             "https://api.github.com/repos/{}/{}/releases/tags/{}",
-            owner, repo, tag
+            owner,
+            repo,
+            tag.value()
         );
 
         let response = get!(&uri)?;
@@ -267,20 +270,19 @@ impl GithubClient {
         owner: &str,
         repo: &str,
         pr_number: u64,
-        assigness: Vec<String>,
+        assignees: Vec<String>,
     ) -> Result<()> {
         let uri = format!(
             "https://api.github.com/repos/{}/{}/issues/{}/assignees",
             owner, repo, pr_number
         );
 
-        let mut body = HashMap::new();
+        let request = AssigneesRequest::new(assignees);
 
-        body.insert("assignees", assigness);
-
-        let body: String = serde_json::to_string(&body)?;
+        let body: String = serde_json::to_string(&request)?;
 
         post!(&uri, body)?;
+
         Ok(())
     }
 
@@ -296,11 +298,9 @@ impl GithubClient {
             owner, repo, pr_number
         );
 
-        let mut body = HashMap::new();
+        let request = LabelsRequest::new(labels);
 
-        body.insert("labels", labels);
-
-        let body: String = serde_json::to_string(&body)?;
+        let body: String = serde_json::to_string(&request)?;
 
         post!(&uri, body)?;
 
