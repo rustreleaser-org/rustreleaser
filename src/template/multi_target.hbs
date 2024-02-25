@@ -16,9 +16,9 @@ class {{ repo }} < Formula
     version "{{ version }}"
 
     {{ #each targets }}
-    {{ #if (eq os "UnknownLinuxGnu") }}
+    {{ #if (eq Multi.os "UnknownLinuxGnu") }}
     on_linux do
-        {{ #each archs}}
+        {{ #each Multi.archs}}
         {{ #if (eq arch "Amd64") }}
         if Hardware::CPU.intel?
             url "{{ url }}"
@@ -42,9 +42,9 @@ class {{ repo }} < Formula
         {{ /each }}
     end
     {{ /if }}
-    {{ #if (eq os "AppleDarwin") }}
+    {{ #if (eq Multi.os "AppleDarwin") }}
     on_macos do
-    {{ #each archs }}
+    {{ #each Multi.archs }}
         {{ #if (eq arch "Amd64") }}
         if Hardware::CPU.intel?
             url "{{ url }}"

@@ -198,9 +198,7 @@ impl GithubClient {
 
         let body: String = serde_json::to_string(&body)?;
 
-        let response = post!(&uri, body);
-
-        // log::debug!("response: {}", response.text().await?);
+        post!(&uri, body);
 
         Ok(())
     }
@@ -265,9 +263,7 @@ impl GithubClient {
             owner, repo, path
         );
 
-        let response = put!(uri, body).text().await?;
-
-        // log::debug!("response: {}", response);
+        put!(uri, body).text().await?;
 
         Ok(())
     }
@@ -296,9 +292,8 @@ impl GithubClient {
 
         let response = post!(&uri, body).text().await?;
 
-        // log::debug!("response: {}", response);
-
         let pr: PullRequest = serde_json::from_str(&response)?;
+
         if !assigness.is_empty() {
             self.set_pr_assignees(owner, repo, pr.number, assigness)
                 .await?;
@@ -330,9 +325,8 @@ impl GithubClient {
 
         let body: String = serde_json::to_string(&body)?;
 
-        let response = post!(&uri, body).text().await?;
+        post!(&uri, body).text().await?;
 
-        // log::debug!("response: {}", response);
         Ok(())
     }
 
@@ -354,9 +348,8 @@ impl GithubClient {
 
         let body: String = serde_json::to_string(&body)?;
 
-        let response = post!(&uri, body).text().await?;
+        post!(&uri, body).text().await?;
 
-        // log::debug!("response: {}", response);
         Ok(())
     }
 
@@ -383,7 +376,6 @@ impl GithubClient {
         let body: String = serde_json::to_string(&body)?;
 
         let response = post!(&uri, body).text().await?;
-        // log::debug!("response: {}", response);
 
         let release = serde_json::from_str::<ReleaseResponse>(&response)?;
         Ok(Release::new(release.id, owner, repo))
@@ -396,8 +388,8 @@ impl GithubClient {
         );
 
         let response = get!(&uri).text().await?;
-        // log::debug!("response: {}", response);
         let release = serde_json::from_str::<ReleaseResponse>(&response)?;
+
         Ok(Release::new(release.id, owner, repo))
     }
 }

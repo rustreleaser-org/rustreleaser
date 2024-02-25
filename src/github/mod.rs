@@ -67,13 +67,13 @@ fn package_asset(asset: &UploadedAsset, os: Option<&Os>, arch: Option<&Arch>) ->
     )
 }
 
-pub async fn release(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Package>> {
+pub async fn release(build_info: &Build, release_info: &ReleaseConfig) -> Result<Vec<Package>> {
     let packages = if build_info.is_multi_target() {
         log::debug!("Running multi target");
-        multi(build_info, release_info).await?
+        multi(build_info.to_owned(), release_info.to_owned()).await?
     } else {
         log::debug!("Running single target");
-        single(build_info, release_info).await?
+        single(build_info.to_owned(), release_info.to_owned()).await?
     };
 
     Ok(packages)

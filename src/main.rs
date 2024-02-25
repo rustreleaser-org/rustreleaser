@@ -24,11 +24,11 @@ async fn main() -> Result<()> {
     let release_info = config.release;
 
     log::info!("Creating release");
-    let packages = github::release(build_info, release_info).await?;
+    let packages = github::release(&build_info, &release_info).await?;
 
     if config.brew.is_some() {
         log::info!("Creating brew formula");
-        brew::release(config.brew.unwrap(), packages, false).await?;
+        brew::release(config.brew.unwrap(), packages, build_info.is_multi_target()).await?;
     }
 
     Ok(())
