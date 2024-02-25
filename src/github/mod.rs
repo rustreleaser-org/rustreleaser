@@ -3,12 +3,15 @@ pub mod asset;
 pub mod builder;
 pub mod github_client;
 pub mod handler;
-pub mod model;
+pub mod macros;
 pub mod release;
+pub mod request;
+pub mod response;
+pub mod tag;
 
 use self::{
     arch_os_matrix::ArchOsMatrixEntry, asset::UploadedAsset, builder::BuilderExecutor,
-    release::Release,
+    release::Release, tag::Tag,
 };
 use crate::{
     brew::package::Package,
@@ -30,42 +33,6 @@ use std::{
 use tar::Builder;
 
 const SINGLE_TARGET_DIR: &str = "target/release";
-fn create_asset<S, P>(name: S, path: P) -> Asset
-where
-    S: Into<String>,
-    P: AsRef<Path>,
-{
-    Asset::new(name.into(), path.as_ref().to_path_buf())
-}
-
-fn generate_checksum(asset: &Asset) -> Result<String> {
-    let checksum = checksum::create(&asset.name, &asset.path)?;
-    Ok(checksum)
-}
-
-fn generate_checksum_asset(asset: &Asset) -> Result<Asset> {
-    if let Some(checksum) = &asset.checksum {
-        let sha256_file_name = format!("{}.sha256", asset.name);
-
-        let path = PathBuf::from(&sha256_file_name);
-        fs::write(&path, format!("{}  {}", checksum, asset.name))?;
-
-        let asset = create_asset(&sha256_file_name, path);
-        Ok(asset)
-    } else {
-        bail!(anyhow::anyhow!("checksum is not available"))
-    }
-}
-
-fn package_asset(asset: &UploadedAsset, os: Option<&Os>, arch: Option<&Arch>) -> Package {
-    Package::new(
-        asset.name.to_owned(),
-        os.map(|os| os.to_owned()),
-        arch.map(|arch| arch.to_owned()),
-        asset.url.to_owned(),
-        asset.checksum.to_owned(),
-    )
-}
 
 pub async fn release(build_info: &Build, release_info: &ReleaseConfig) -> Result<Vec<Package>> {
     let packages = if build_info.is_multi_target() {
@@ -86,20 +53,12 @@ async fn single(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pa
     let tag = git::get_current_tag()?;
 
     // calculate full binary name
-    let binary_name = if tag.is_empty() {
-        format!(
-            "{}.{}",
-            build_info.binary,
-            build_info.compression.get_extension()
-        )
-    } else {
-        format!(
-            "{}_{}.{}",
-            build_info.binary,
-            tag,
-            build_info.compression.get_extension()
-        )
-    };
+    let binary_name = format!(
+        "{}_{}.{}",
+        build_info.binary,
+        tag.value(),
+        build_info.compression.extension()
+    );
 
     log::debug!("binary name: {}", binary_name);
 
@@ -164,7 +123,8 @@ async fn multi(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pac
                 Some(format!("{}-{}", &arch.to_string(), &os.to_string())),
             )?;
 
-            let mut entry = ArchOsMatrixEntry::new(arch, os, binary, &tag, &build_info.compression);
+            let mut entry =
+                ArchOsMatrixEntry::new(arch, os, binary, &tag.value(), &build_info.compression);
 
             let target = format!("{}-{}", &arch.to_string(), &os.to_string());
 
@@ -244,9 +204,9 @@ fn check_binary(name: &str, target: Option<String>) -> Result<()> {
     };
 
     if !PathBuf::from(binary_path).exists() {
-        let error = "no release folder found, please run `cargo build --release`";
-        log::error!("{error}");
-        bail!(anyhow::anyhow!(error));
+        bail!(anyhow::anyhow!(
+            "no release folder found, please run `cargo build --release`"
+        ));
     }
     Ok(())
 }
@@ -261,6 +221,7 @@ async fn do_create_release(release_info: ReleaseConfig, tag: impl Into<String>) 
         .name(&release_info.name)
         .draft(release_info.draft)
         .prerelease(release_info.prerelease)
+        .body(release_info.body.unwrap_or_default())
         .execute()
         .await
 }
@@ -276,28 +237,67 @@ async fn get_release_by_tag(
         .await
 }
 
-async fn get_release<S, F, C, FO, CO>(
+async fn get_release<'tag, F, C, FO, CO>(
     release_info: ReleaseConfig,
-    tag: S,
+    tag: &'tag Tag,
     function: F,
     callback: C,
 ) -> Result<Release>
 where
-    S: Into<String> + Copy,
-    F: FnOnce(ReleaseConfig, S) -> FO,
-    C: FnOnce(ReleaseConfig, S) -> CO,
+    F: FnOnce(ReleaseConfig, &'tag str) -> FO,
+    C: FnOnce(ReleaseConfig, &'tag str) -> CO,
     FO: Future<Output = Result<Release>>,
     CO: Future<Output = Result<Release>>,
 {
-    let res = function(release_info.to_owned(), tag).await;
+    let res = function(release_info.to_owned(), tag.value()).await;
     match res {
         Ok(release) => Ok(release),
         Err(err) => {
             log::warn!(
-                "cannot create a release, trying to get the release by tag: {:#?}",
+                "cannot create a release, trying to get the release by tag: {:?}",
                 err
             );
-            callback(release_info, tag).await
+            callback(release_info, tag.value()).await
         }
     }
+}
+
+fn create_asset<S, P>(name: S, path: P) -> Asset
+where
+    S: Into<String>,
+    P: AsRef<Path>,
+{
+    Asset::new(name.into(), path.as_ref().to_path_buf())
+}
+
+fn generate_checksum(asset: &Asset) -> Result<String> {
+    let checksum = checksum::create(&asset.name, &asset.path)?;
+    Ok(checksum)
+}
+
+fn generate_checksum_asset(asset: &Asset) -> Result<Asset> {
+    if let Some(checksum) = &asset.checksum {
+        let sha256_file_name = format!("{}.sha256", asset.name);
+
+        let path = PathBuf::from(&sha256_file_name);
+        fs::write(&path, format!("{}  {}", checksum, asset.name))?;
+
+        let asset = create_asset(&sha256_file_name, path);
+        Ok(asset)
+    } else {
+        bail!(anyhow::anyhow!(
+            "checksum is not available for asset {:#?}",
+            asset
+        ))
+    }
+}
+
+fn package_asset(asset: &UploadedAsset, os: Option<&Os>, arch: Option<&Arch>) -> Package {
+    Package::new(
+        asset.name.to_owned(),
+        os.map(|os| os.to_owned()),
+        arch.map(|arch| arch.to_owned()),
+        asset.url.to_owned(),
+        asset.checksum.to_owned(),
+    )
 }

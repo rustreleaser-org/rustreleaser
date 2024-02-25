@@ -1,6 +1,9 @@
 pub mod arch;
+pub mod committer;
+pub mod compression;
 pub mod os;
 
+use self::compression::Compression;
 use arch::Arch;
 use os::Os;
 use serde::{Deserialize, Serialize};
@@ -32,20 +35,6 @@ impl Build {
             !oss.is_empty()
         } else {
             false
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub enum Compression {
-    #[default]
-    TarGz,
-}
-
-impl Compression {
-    pub fn get_extension(&self) -> &str {
-        match self {
-            Compression::TarGz => "tar.gz",
         }
     }
 }

@@ -926,6 +926,7 @@ dependencies = [
  "sha2",
  "simple_logger",
  "tar",
+ "thiserror",
  "tokio",
  "tokio-util",
 ]

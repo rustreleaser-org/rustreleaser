@@ -1,80 +1,23 @@
-use crate::github::release::{Release, ReleaseResponse};
-
 use super::{
     asset::{Asset, UploadedAsset},
-    builder::create_pull_request_builder::Committer,
     handler::repository_handler::RepositoryHandler,
-    model::{pull_request::PullRequest, sha::Sha},
+    request::{branch_ref_request::BranchRefRequest, create_release_request::CreateReleaseRequest},
+    response::{
+        pull_request_response::PullRequest, release_response::ReleaseResponse, sha_response::Sha,
+    },
+    tag::Tag,
 };
-use anyhow::{bail, Context, Result};
+use crate::{
+    build::committer::Committer,
+    form, get,
+    github::{release::Release, request::upsert_file_request::UpsertFileRequest},
+    post, put,
+};
+use anyhow::{Context, Result};
 use base64::{prelude::BASE64_STANDARD, Engine};
 use once_cell::sync::Lazy;
-use reqwest::{
-    header::{ACCEPT, CONTENT_TYPE, USER_AGENT},
-    multipart::{Form, Part},
-};
-use serde_json::json;
+use reqwest::multipart::{Form, Part};
 use std::{collections::HashMap, env};
-
-#[macro_export]
-macro_rules! get {
-    ($url:expr) => {
-        $crate::http::HttpClient::new()
-            .get($url)
-            .bearer_auth(GITHUB_TOKEN.to_string())
-            .header(ACCEPT, "application/vnd.github.VERSION.sha")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header(USER_AGENT, "rust-releaser")
-            .send()
-            .await?
-    };
-}
-
-#[macro_export]
-macro_rules! post {
-    ($url:expr, $body:expr) => {
-        $crate::http::HttpClient::new()
-            .post($url)
-            .bearer_auth(GITHUB_TOKEN.to_string())
-            .header(ACCEPT, "application/vnd.github.VERSION.sha")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header(USER_AGENT, "rust-releaser")
-            .body($body)
-            .send()
-            .await?
-    };
-}
-
-#[macro_export]
-macro_rules! form {
-    ($url:expr, $form:expr) => {
-        $crate::http::HttpClient::new()
-            .post($url)
-            .bearer_auth(GITHUB_TOKEN.to_string())
-            .header(ACCEPT, "application/vnd.github.VERSION.sha")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header(USER_AGENT, "rust-releaser")
-            .header(CONTENT_TYPE, "application/octet-stream")
-            .multipart($form)
-            .send()
-            .await
-    };
-}
-
-#[macro_export]
-macro_rules! put {
-    ($url:expr, $body:expr) => {
-        $crate::http::HttpClient::new()
-            .put($url)
-            .bearer_auth(GITHUB_TOKEN.to_string())
-            .header(ACCEPT, "application/vnd.github.VERSION.sha")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header(USER_AGENT, "rust-releaser")
-            .body($body)
-            .send()
-            .await?
-    };
-}
 
 pub static GITHUB_TOKEN: Lazy<String> =
     Lazy::new(|| env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set"));
@@ -99,7 +42,7 @@ impl GithubClient {
         &self,
         asset: &Asset,
         owner: impl Into<String>,
-        tag: impl Into<String>,
+        tag: &Tag,
         repo: impl Into<String>,
         release_id: u64,
     ) -> Result<UploadedAsset> {
@@ -117,36 +60,22 @@ impl GithubClient {
             &owner, &repo, release_id, asset.name
         );
 
-        let response = form!(uri, form);
+        form!(uri, form)?;
 
-        match response {
-            Ok(response) => {
-                log::debug!("status: {}", response.status());
-                let response = response.text().await?;
-                log::debug!("response: {}", response);
-            }
-            Err(err) => {
-                bail!(err);
-            }
-        }
-
-        let tag: String = tag.into();
-        let tag = if tag.starts_with('v') {
-            tag.strip_prefix('v').unwrap_or_default()
-        } else {
-            &tag
-        };
         let asset_url = format!(
             "https://github.com/{}/{}/releases/download/v{}/{}",
-            &owner, &repo, &tag, asset.name
+            &owner,
+            &repo,
+            tag.strip_v_prefix(),
+            asset.name
         );
-        log::info!("creating uploaded asset");
+        log::debug!("creating uploaded asset");
         let uploaded_asset = self.create_uploaded_asset(asset, asset_url);
 
         Ok(uploaded_asset)
     }
 
-    pub fn create_uploaded_asset(&self, asset: &Asset, url: String) -> UploadedAsset {
+    pub(super) fn create_uploaded_asset(&self, asset: &Asset, url: String) -> UploadedAsset {
         UploadedAsset::new(
             asset.name.to_owned(),
             url,
@@ -158,7 +87,7 @@ impl GithubClient {
         )
     }
 
-    pub async fn get_commit_sha(
+    pub(super) async fn get_commit_sha(
         &self,
         owner: impl Into<String>,
         repo: impl Into<String>,
@@ -173,16 +102,14 @@ impl GithubClient {
             &owner, &repo, &base
         );
 
-        let response = get!(&uri);
-
-        let response = response.text().await?;
+        let response = get!(&uri)?;
 
         let sha = Sha { sha: response };
 
         Ok(sha)
     }
 
-    pub async fn create_branch(
+    pub(super) async fn create_branch(
         &self,
         owner: &str,
         repo: &str,
@@ -191,19 +118,15 @@ impl GithubClient {
     ) -> Result<()> {
         let uri = format!("https://api.github.com/repos/{}/{}/git/refs", owner, repo);
 
-        let mut body = HashMap::new();
+        let request = BranchRefRequest::new(branch.to_string(), sha.to_string());
+        let body: String = serde_json::to_string(&request)?;
 
-        body.insert("ref", format!("refs/heads/{}", branch));
-        body.insert("sha", sha.to_owned());
-
-        let body: String = serde_json::to_string(&body)?;
-
-        post!(&uri, body);
+        post!(&uri, body)?;
 
         Ok(())
     }
 
-    pub async fn update_file(
+    pub(super) async fn update_file(
         &self,
         owner: &str,
         repo: &str,
@@ -215,59 +138,44 @@ impl GithubClient {
     ) -> Result<()> {
         let content = BASE64_STANDARD.encode(content.as_bytes());
 
-        let mut committer_map = HashMap::new();
-
-        committer_map.insert("name", committer.author);
-        committer_map.insert("email", committer.email);
-
-        let committer = serde_json::to_string(&committer_map)?;
-
         let file_sha = get!(&format!(
             "https://api.github.com/repos/{}/{}/contents/{}",
             owner, repo, path
         ))
-        .text()
-        .await
         .context("failed to get Formula sha value")?;
 
         let sha = serde_json::from_str::<Sha>(&file_sha).unwrap_or_default();
 
         let body = if sha.sha.is_empty() {
-            let mut body = HashMap::new();
+            let request = UpsertFileRequest::new(
+                commit_message,
+                content,
+                Some(head),
+                sha.sha,
+                committer.into(),
+            );
 
-            body.insert("message", commit_message);
-            body.insert("branch", head);
-            body.insert("content", content);
-            body.insert("committer", committer);
-            body.insert("sha", sha.sha);
-
-            let body: String = serde_json::to_string(&body)?;
-
-            body
+            serde_json::to_string(&request)?
         } else {
-            let mut body = HashMap::new();
+            let request =
+                UpsertFileRequest::new(commit_message, content, None, sha.sha, committer.into());
 
-            body.insert("message", commit_message);
-            body.insert("content", content);
-            body.insert("committer", committer);
-            body.insert("sha", sha.sha);
-
-            let body: String = serde_json::to_string(&body)?;
-
-            body
+            serde_json::to_string(&request)?
         };
+
+        log::debug!("body: {}", body);
 
         let uri = format!(
             "https://api.github.com/repos/{}/{}/contents/{}",
             owner, repo, path
         );
 
-        put!(uri, body).text().await?;
+        put!(uri, body)?;
 
         Ok(())
     }
 
-    pub async fn create_pull_request(
+    pub(super) async fn create_pull_request(
         &self,
         owner: &str,
         repo: &str,
@@ -289,7 +197,7 @@ impl GithubClient {
 
         let body: String = serde_json::to_string(&body)?;
 
-        let response = post!(&uri, body).text().await?;
+        let response = post!(&uri, body)?;
 
         let pr: PullRequest = serde_json::from_str(&response)?;
 
@@ -304,6 +212,54 @@ impl GithubClient {
         }
 
         Ok(pr)
+    }
+
+    pub(super) async fn create_release(
+        &self,
+        owner: &str,
+        repo: &str,
+        tag: &str,
+        target_branch: &str,
+        release_name: &str,
+        draft: bool,
+        prerelease: bool,
+        body: &str,
+    ) -> Result<Release> {
+        let uri = format!("https://api.github.com/repos/{}/{}/releases", owner, repo);
+
+        let request = CreateReleaseRequest::new(
+            tag.to_owned(),
+            target_branch.to_owned(),
+            release_name.to_owned(),
+            body.to_owned(),
+            draft,
+            prerelease,
+        );
+
+        let body: String = serde_json::to_string(&request)?;
+
+        let response = post!(&uri, body)?;
+
+        let release = serde_json::from_str::<ReleaseResponse>(&response)?;
+
+        Ok(Release::new(release.id, owner, repo))
+    }
+
+    pub(super) async fn get_release_by_tag(
+        &self,
+        owner: &str,
+        repo: &str,
+        tag: &str,
+    ) -> Result<Release> {
+        let uri = format!(
+            "https://api.github.com/repos/{}/{}/releases/tags/{}",
+            owner, repo, tag
+        );
+
+        let response = get!(&uri)?;
+        let release = serde_json::from_str::<ReleaseResponse>(&response)?;
+
+        Ok(Release::new(release.id, owner, repo))
     }
 
     async fn set_pr_assignees(
@@ -324,8 +280,7 @@ impl GithubClient {
 
         let body: String = serde_json::to_string(&body)?;
 
-        post!(&uri, body).text().await?;
-
+        post!(&uri, body)?;
         Ok(())
     }
 
@@ -347,48 +302,8 @@ impl GithubClient {
 
         let body: String = serde_json::to_string(&body)?;
 
-        post!(&uri, body).text().await?;
+        post!(&uri, body)?;
 
         Ok(())
-    }
-
-    pub async fn create_release(
-        &self,
-        owner: &str,
-        repo: &str,
-        tag: &str,
-        target_branch: &str,
-        release_name: &str,
-        draft: bool,
-        prerelease: bool,
-    ) -> Result<Release> {
-        let uri = format!("https://api.github.com/repos/{}/{}/releases", owner, repo);
-
-        let body = json!({
-            "tag_name": tag,
-            "target_commitish": target_branch,
-            "name": release_name,
-            "draft": draft,
-            "prerelease": prerelease
-        });
-
-        let body: String = serde_json::to_string(&body)?;
-
-        let response = post!(&uri, body).text().await?;
-
-        let release = serde_json::from_str::<ReleaseResponse>(&response)?;
-        Ok(Release::new(release.id, owner, repo))
-    }
-
-    pub async fn get_release_by_tag(&self, owner: &str, repo: &str, tag: &str) -> Result<Release> {
-        let uri = format!(
-            "https://api.github.com/repos/{}/{}/releases/tags/{}",
-            owner, repo, tag
-        );
-
-        let response = get!(&uri).text().await?;
-        let release = serde_json::from_str::<ReleaseResponse>(&response)?;
-
-        Ok(Release::new(release.id, owner, repo))
     }
 }

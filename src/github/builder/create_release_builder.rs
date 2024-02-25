@@ -10,6 +10,7 @@ pub struct CreateReleaseBuilder {
     pub target_branch: Option<String>,
     pub draft: Option<bool>,
     pub prerelease: Option<bool>,
+    pub body: Option<String>,
 }
 
 impl CreateReleaseBuilder {
@@ -22,6 +23,7 @@ impl CreateReleaseBuilder {
             target_branch: None,
             draft: None,
             prerelease: None,
+            body: None,
         }
     }
 
@@ -58,6 +60,14 @@ impl CreateReleaseBuilder {
         self.prerelease = Some(pre_release);
         self
     }
+
+    pub fn body<S>(mut self, body: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.body = Some(body.into());
+        self
+    }
 }
 
 impl BuilderExecutor for CreateReleaseBuilder {
@@ -73,6 +83,7 @@ impl BuilderExecutor for CreateReleaseBuilder {
                 &self.release_name.unwrap(),
                 self.draft.unwrap(),
                 self.prerelease.unwrap(),
+                &self.body.unwrap_or_default(),
             )
             .await
     }

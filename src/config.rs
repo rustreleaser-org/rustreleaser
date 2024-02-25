@@ -64,4 +64,5 @@ pub struct ReleaseConfig {
     pub prerelease: bool,
     pub draft: bool,
     pub name: String,
+    pub body: Option<String>,
 }

@@ -8,6 +8,7 @@ mod http;
 mod logger;
 mod template;
 
+use crate::template::Template;
 use anyhow::Result;
 use config::Config;
 
@@ -16,7 +17,6 @@ async fn main() -> Result<()> {
     logger::init()?;
 
     log::info!("Starting");
-
     let config = Config::load().await?;
 
     let build_info = config.build;
@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
 
     if config.brew.is_some() {
         log::info!("Creating brew formula");
-        brew::release(config.brew.unwrap(), packages, build_info.is_multi_target()).await?;
+        brew::release(config.brew.unwrap(), packages, Template::from(build_info)).await?;
     }
 
     Ok(())

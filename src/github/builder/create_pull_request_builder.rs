@@ -1,5 +1,8 @@
 use super::BuilderExecutor;
-use crate::github::{github_client, model::pull_request::PullRequest};
+use crate::{
+    build::committer::Committer,
+    github::{github_client, response::pull_request_response::PullRequest},
+};
 
 pub struct CreatePullRequestBuilder {
     pub owner: String,
@@ -11,21 +14,6 @@ pub struct CreatePullRequestBuilder {
     pub committer: Option<Committer>,
     pub base: Option<String>,
     pub head: Option<String>,
-}
-
-#[derive(Clone)]
-pub struct Committer {
-    pub author: String,
-    pub email: String,
-}
-
-impl Default for Committer {
-    fn default() -> Self {
-        Committer {
-            author: "Rafael Vigo".to_string(),
-            email: "rvigo07+github@gmail.com".to_string(),
-        }
-    }
 }
 
 impl CreatePullRequestBuilder {

@@ -1,4 +1,4 @@
-use super::{asset::UploadedAsset, generate_checksum_asset};
+use super::{asset::UploadedAsset, generate_checksum_asset, tag::Tag};
 use crate::{
     brew::package::Package,
     github::{asset::Asset, github_client},
@@ -27,7 +27,7 @@ impl Release {
         }
     }
 
-    pub async fn upload_assets(&self, assets: Vec<Asset>, tag: &str) -> Result<Vec<UploadedAsset>> {
+    pub async fn upload_assets(&self, assets: Vec<Asset>, tag: &Tag) -> Result<Vec<UploadedAsset>> {
         let mut uploaded = vec![];
         for asset in assets {
             let uploaded_asset = github_client::instance()
@@ -44,7 +44,7 @@ impl Release {
         Ok(uploaded)
     }
 
-    async fn upload_checksum_asset(&self, asset: &Asset, tag: &str) -> Result<()> {
+    async fn upload_checksum_asset(&self, asset: &Asset, tag: &Tag) -> Result<()> {
         let checksum_asset = generate_checksum_asset(asset)?;
         let ua = github_client::instance()
             .upload_asset(&checksum_asset, &self.owner, tag, &self.repo, self.id)
@@ -52,9 +52,4 @@ impl Release {
         log::debug!("Uploaded checksum asset: {:#?}", ua);
         Ok(())
     }
-}
-
-#[derive(Deserialize)]
-pub struct ReleaseResponse {
-    pub id: u64,
 }

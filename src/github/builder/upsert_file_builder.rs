@@ -1,5 +1,5 @@
 use super::BuilderExecutor;
-use crate::github::{builder::create_pull_request_builder::Committer, github_client};
+use crate::{build::committer::Committer, github::github_client};
 
 pub struct UpsertFileBuilder {
     owner: String,

@@ -1,5 +1,5 @@
 use super::asset::Asset;
-use crate::build::{arch::Arch, os::Os, Compression};
+use crate::build::{arch::Arch, compression::Compression, os::Os};
 
 #[derive(Debug, Clone)]
 pub struct ArchOsMatrixEntry<'matrix> {
@@ -23,7 +23,7 @@ impl<'matrix> ArchOsMatrixEntry<'matrix> {
             tag,
             arch.to_string(),
             os.to_string(),
-            compression.get_extension()
+            compression.extension()
         );
         Self {
             arch,

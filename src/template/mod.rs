@@ -1,3 +1,4 @@
+use crate::build::Build;
 use anyhow::Result;
 use handlebars::{handlebars_helper, Handlebars};
 
@@ -27,6 +28,15 @@ impl ToString for Template {
         match self {
             Template::MultiTarget => "multi_target".to_string(),
             Template::SingleTarget => "single_target".to_string(),
+        }
+    }
+}
+
+impl From<Build> for Template {
+    fn from(build: Build) -> Self {
+        match build.is_multi_target() {
+            true => Template::MultiTarget,
+            false => Template::SingleTarget,
         }
     }
 }

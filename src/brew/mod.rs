@@ -1,22 +1,29 @@
 pub mod install;
 pub mod package;
 pub mod repository;
+pub mod target;
 
-use self::{install::Install, package::Package, repository::Repository};
+use self::{
+    install::Install,
+    package::Package,
+    repository::Repository,
+    target::{MultiTarget, SingleTarget, Target, Targets},
+};
 use crate::{
-    build::{arch::Arch, os::Os},
+    build::{arch::Arch, committer::Committer},
     config::{BrewConfig, CommitterConfig, PullRequestConfig},
     git,
-    github::{
-        builder::{create_pull_request_builder::Committer, BuilderExecutor},
-        github_client,
-    },
+    github::{builder::BuilderExecutor, github_client, tag::Tag},
     template::{handlebars, Template},
 };
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fs;
+
+const DEFAULT_BASE_BRANCH_NAME: &str = "main";
+const DEFAULT_HEAD_BRANCH_NAME: &str = "bumps-formula-version";
+const DEFAULT_COMMIT_MESSAGE: &str = "update formula";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Brew {
@@ -31,16 +38,13 @@ pub struct Brew {
     pub commit_author: Option<CommitterConfig>,
     pub install_info: Install,
     pub repository: Repository,
-    pub version: String,
+    pub version: Tag,
     pub pull_request: Option<PullRequestConfig>,
     pub targets: Targets,
 }
 
-const DEFAULT_BASE_BRANCH_NAME: &str = "main";
-const DEFAULT_COMMIT_MESSAGE: &str = "update formula";
-
 impl Brew {
-    pub fn new(brew: BrewConfig, version: String, packages: Vec<Package>) -> Brew {
+    pub fn new(brew: BrewConfig, version: Tag, packages: Vec<Package>) -> Brew {
         Brew {
             name: captalize(brew.name),
             description: brew.description,
@@ -63,81 +67,19 @@ impl Brew {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Targets(pub Vec<Target>);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MultiTarget {
-    pub os: Os,
-    pub archs: Vec<BrewArch>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SingleTarget {
-    pub url: String,
-    pub hash: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Target {
-    Single(SingleTarget),
-    Multi(MultiTarget),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrewArch {
     pub arch: Arch,
     pub url: String,
     pub hash: String,
 }
 
-impl From<Vec<Package>> for Targets {
-    fn from(value: Vec<Package>) -> Targets {
-        let v: Vec<Target> = if value.is_empty() {
-            vec![]
-        } else if value[0].arch.is_none() && value[0].os.is_none() {
-            let target = vec![Target::Single(SingleTarget {
-                url: value[0].url.clone(),
-                hash: value[0].sha256.clone(),
-            })];
-            target
-        } else {
-            let group = value
-                .iter()
-                .cloned()
-                .group_by(|p| p.os.to_owned())
-                .into_iter()
-                .map(|g| MultiTarget {
-                    os: g.0.unwrap(),
-                    archs: g
-                        .1
-                        .map(|p| BrewArch {
-                            arch: p.arch.to_owned().unwrap(),
-                            url: p.url.clone(),
-                            hash: p.sha256.clone(),
-                        })
-                        .collect(),
-                })
-                .map(Target::Multi)
-                .collect();
-
-            group
-        };
-
-        Targets(v)
-    }
-}
-
 pub async fn release(
     brew_config: BrewConfig,
     packages: Vec<Package>,
-    is_multitarget: bool,
+    template: Template,
 ) -> Result<String> {
     let brew = Brew::new(brew_config, git::get_current_tag()?, packages);
-    let template = if is_multitarget {
-        Template::MultiTarget
-    } else {
-        Template::SingleTarget
-    };
+
     log::debug!("Rendering Formula template {}", template.to_string());
     let data = serialize_brew(&brew, template)?;
 
@@ -147,6 +89,7 @@ pub async fn release(
         log::debug!("Creating pull request");
         push_formula(brew).await?;
     } else {
+        log::debug!("Committing file to head branch");
         github_client::instance()
             .repo(&brew.repository.owner, &brew.repository.name)
             .branch(&brew.head)
@@ -179,8 +122,8 @@ where
     Ok(())
 }
 
-fn captalize(mut s: String) -> String {
-    format!("{}{s}", s.remove(0).to_uppercase())
+fn captalize(mut string: String) -> String {
+    format!("{}{string}", string.remove(0).to_uppercase())
 }
 
 async fn push_formula(brew: Brew) -> Result<()> {
@@ -190,7 +133,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
 
     let head_branch = pull_request
         .head
-        .unwrap_or("bumps-formula-version".to_owned());
+        .unwrap_or(DEFAULT_HEAD_BRANCH_NAME.to_owned());
 
     let base_branch = pull_request
         .base
@@ -245,6 +188,43 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .context("error creating pull request")?;
 
     Ok(())
+}
+
+impl From<Vec<Package>> for Targets {
+    fn from(value: Vec<Package>) -> Targets {
+        let v: Vec<Target> = if value.is_empty() {
+            vec![]
+        } else if value[0].arch.is_none() && value[0].os.is_none() {
+            let target = vec![Target::Single(SingleTarget {
+                url: value[0].url.clone(),
+                hash: value[0].sha256.clone(),
+            })];
+            target
+        } else {
+            let group = value
+                .iter()
+                .cloned()
+                .group_by(|p| p.os.to_owned())
+                .into_iter()
+                .map(|g| MultiTarget {
+                    os: g.0.unwrap(),
+                    archs: g
+                        .1
+                        .map(|p| BrewArch {
+                            arch: p.arch.to_owned().unwrap(),
+                            url: p.url.clone(),
+                            hash: p.sha256.clone(),
+                        })
+                        .collect(),
+                })
+                .map(Target::Multi)
+                .collect();
+
+            group
+        };
+
+        Targets(v)
+    }
 }
 
 impl From<CommitterConfig> for Committer {
