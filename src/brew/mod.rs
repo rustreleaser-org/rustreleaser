@@ -24,10 +24,10 @@ pub struct Brew {
     pub description: Option<String>,
     pub homepage: Option<String>,
     pub license: Option<String>,
-    pub head: Option<String>,
+    pub head: String,
     pub test: Option<String>,
     pub caveats: Option<String>,
-    pub commit_message: Option<String>,
+    pub commit_message: String,
     pub commit_author: Option<CommitterConfig>,
     pub install_info: Install,
     pub repository: Repository,
@@ -35,6 +35,9 @@ pub struct Brew {
     pub pull_request: Option<PullRequestConfig>,
     pub targets: Targets,
 }
+
+const DEFAULT_BASE_BRANCH_NAME: &str = "main";
+const DEFAULT_COMMIT_MESSAGE: &str = "update formula";
 
 impl Brew {
     pub fn new(brew: BrewConfig, version: String, packages: Vec<Package>) -> Brew {
@@ -47,10 +50,12 @@ impl Brew {
             version,
             targets: Targets::from(packages),
             license: brew.license,
-            head: brew.head,
+            head: brew.head.unwrap_or(DEFAULT_BASE_BRANCH_NAME.to_owned()),
             test: brew.test,
             caveats: brew.caveats,
-            commit_message: brew.commit_message,
+            commit_message: brew
+                .commit_message
+                .unwrap_or(DEFAULT_COMMIT_MESSAGE.to_owned()),
             commit_author: brew.commit_author,
             pull_request: brew.pull_request,
         }
@@ -112,7 +117,7 @@ impl From<Vec<Package>> for Targets {
                         })
                         .collect(),
                 })
-                .map(|t| Target::Multi(t))
+                .map(Target::Multi)
                 .collect();
 
             group
@@ -144,10 +149,10 @@ pub async fn release(
     } else {
         github_client::instance()
             .repo(&brew.repository.owner, &brew.repository.name)
-            .branch(&brew.head.unwrap_or("main".to_owned()))
+            .branch(&brew.head)
             .upsert_file()
             .path(format!("{}.rb", brew.name))
-            .message(brew.commit_message.unwrap_or("update formula".to_owned()))
+            .message(brew.commit_message)
             .content(&data)
             .execute()
             .await
@@ -187,7 +192,9 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .head
         .unwrap_or("bumps-formula-version".to_owned());
 
-    let base_branch = pull_request.base.unwrap_or("main".to_owned());
+    let base_branch = pull_request
+        .base
+        .unwrap_or(DEFAULT_BASE_BRANCH_NAME.to_owned());
 
     let repo_handler =
         github_client::instance().repo(&brew.repository.owner, &brew.repository.name);
@@ -215,7 +222,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .branch(&head_branch)
         .upsert_file()
         .path(format!("{}.rb", brew.name))
-        .message(brew.commit_message.unwrap_or("update formula".to_owned()))
+        .message(brew.commit_message)
         .content(content)
         .commiter(&commiter)
         .execute()

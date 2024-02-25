@@ -1,7 +1,6 @@
 use crate::{
     brew::{install::Install, repository::Repository},
     build::Build,
-    release::ReleaseConfig,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -55,4 +54,14 @@ pub struct PullRequestConfig {
     pub draft: Option<bool>,
     pub base: Option<String>,
     pub head: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReleaseConfig {
+    pub owner: String,
+    pub repo: String,
+    pub target_branch: String,
+    pub prerelease: bool,
+    pub draft: bool,
+    pub name: String,
 }

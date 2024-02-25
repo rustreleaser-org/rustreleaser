@@ -5,7 +5,7 @@ pub struct UpsertFileBuilder {
     owner: String,
     repo: String,
     path: String,
-    message: String,
+    commit_message: String,
     content: String,
     commiter: Commiter,
     head: String,
@@ -21,7 +21,7 @@ impl UpsertFileBuilder {
             owner: owner.into(),
             repo: repo.into(),
             path: "".to_string(),
-            message: "".to_string(),
+            commit_message: "".to_string(),
             content: "".to_string(),
             commiter: Commiter::default(),
             head: branch.into(),
@@ -40,7 +40,7 @@ impl UpsertFileBuilder {
     where
         S: Into<String>,
     {
-        self.message = message.into();
+        self.commit_message = message.into();
         self
     }
 
@@ -68,7 +68,7 @@ impl BuilderExecutor for UpsertFileBuilder {
                 &self.repo,
                 &self.path,
                 &self.content,
-                Some(self.message),
+                self.commit_message,
                 self.commiter,
                 self.head,
             )

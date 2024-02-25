@@ -118,6 +118,7 @@ impl GithubClient {
         );
 
         let response = form!(uri, form);
+
         match response {
             Ok(response) => {
                 log::debug!("status: {}", response.status());
@@ -130,8 +131,8 @@ impl GithubClient {
         }
 
         let tag: String = tag.into();
-        let tag = if tag.starts_with("v") {
-            tag.strip_prefix("v").unwrap_or_default()
+        let tag = if tag.starts_with('v') {
+            tag.strip_prefix('v').unwrap_or_default()
         } else {
             &tag
         };
@@ -175,7 +176,6 @@ impl GithubClient {
         let response = get!(&uri);
 
         let response = response.text().await?;
-        // log::debug!("response: {}", response);
 
         let sha = Sha { sha: response };
 
@@ -209,11 +209,10 @@ impl GithubClient {
         repo: &str,
         path: &str,
         content: &str,
-        commit_message: Option<String>,
+        commit_message: String,
         commiter: Commiter,
         head: String,
     ) -> Result<()> {
-        let message = commit_message.unwrap_or("update formula".to_string());
         let content = BASE64_STANDARD.encode(content.as_bytes());
 
         let mut commiter_map = HashMap::new();
@@ -236,7 +235,7 @@ impl GithubClient {
         let body = if sha.sha.is_empty() {
             let mut body = HashMap::new();
 
-            body.insert("message", message);
+            body.insert("message", commit_message);
             body.insert("branch", head);
             body.insert("content", content);
             body.insert("commiter", commiter);
@@ -248,7 +247,7 @@ impl GithubClient {
         } else {
             let mut body = HashMap::new();
 
-            body.insert("message", message);
+            body.insert("message", commit_message);
             body.insert("content", content);
             body.insert("commiter", commiter);
             body.insert("sha", sha.sha);

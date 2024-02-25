@@ -2,11 +2,10 @@ mod brew;
 mod build;
 mod checksum;
 mod config;
-pub mod git;
+mod git;
 mod github;
 mod http;
 mod logger;
-mod release;
 mod template;
 
 use anyhow::Result;

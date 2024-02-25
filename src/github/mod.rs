@@ -13,9 +13,10 @@ use self::{
 use crate::{
     brew::package::Package,
     build::{arch::Arch, os::Os, Build},
-    checksum, git,
+    checksum,
+    config::ReleaseConfig,
+    git,
     github::{arch_os_matrix::PushArchOsMatrix, asset::Asset},
-    release::ReleaseConfig,
 };
 use anyhow::{bail, Result};
 use flate2::{write::GzEncoder, Compression};
@@ -29,7 +30,6 @@ use std::{
 use tar::Builder;
 
 const SINGLE_TARGET_DIR: &str = "target/release";
-
 fn create_asset<S, P>(name: S, path: P) -> Asset
 where
     S: Into<String>,
