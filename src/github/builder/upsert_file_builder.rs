@@ -20,9 +20,9 @@ impl UpsertFileBuilder {
         UpsertFileBuilder {
             owner: owner.into(),
             repo: repo.into(),
-            path: "".to_string(),
-            commit_message: "".to_string(),
-            content: "".to_string(),
+            path: String::new(),
+            commit_message: String::new(),
+            content: String::new(),
             committer: Committer::default(),
             head: branch.into(),
         }
@@ -63,7 +63,7 @@ impl BuilderExecutor for UpsertFileBuilder {
 
     async fn execute(self) -> anyhow::Result<Self::Output> {
         github_client::instance()
-            .update_file(
+            .upsert_file(
                 &self.owner,
                 &self.repo,
                 &self.path,

@@ -20,7 +20,7 @@ impl Headers for RequestBuilder {
 #[macro_export]
 macro_rules! put {
     ($url:expr, $body:expr) => {{
-        use crate::{github::macros::Headers, http::ResponseHandler};
+        use $crate::{github::macros::Headers, http::ResponseHandler};
 
         $crate::http::HttpClient::new()
             .put($url)
@@ -36,7 +36,7 @@ macro_rules! put {
 #[macro_export]
 macro_rules! get {
     ($url:expr) => {{
-        use crate::{github::macros::Headers, http::ResponseHandler};
+        use $crate::{github::macros::Headers, http::ResponseHandler};
 
         $crate::http::HttpClient::new()
             .get($url)
@@ -51,7 +51,7 @@ macro_rules! get {
 #[macro_export]
 macro_rules! post {
     ($url:expr, $body:expr) => {{
-        use crate::{github::macros::Headers, http::ResponseHandler};
+        use $crate::{github::macros::Headers, http::ResponseHandler};
 
         $crate::http::HttpClient::new()
             .post($url)
@@ -67,8 +67,8 @@ macro_rules! post {
 #[macro_export]
 macro_rules! form {
     ($url:expr, $form:expr) => {{
-        use crate::{github::macros::Headers, http::ResponseHandler};
         use reqwest::header::CONTENT_TYPE;
+        use $crate::{github::macros::Headers, http::ResponseHandler};
 
         $crate::http::HttpClient::new()
             .post($url)

@@ -5,6 +5,12 @@ use crate::{
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+const MAIN_BRANCH_NAME: &str = "main";
+const BREW_DEFAULT_COMMIT_MESSAGE: &str = "update formula";
+
+const PR_DEFAULT_BASE_BRANCH_NAME: &str = MAIN_BRANCH_NAME;
+const PR_DEFAULT_HEAD_BRANCH_NAME: &str = "bumps-formula-version";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub build: Build,
@@ -25,17 +31,34 @@ impl Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrewConfig {
     pub name: String,
-    pub description: Option<String>,
-    pub homepage: Option<String>,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub homepage: String,
     pub install: Install,
-    pub repository: Repository,
-    pub license: Option<String>,
-    pub head: Option<String>,
-    pub test: Option<String>,
-    pub caveats: Option<String>,
-    pub commit_message: Option<String>,
+    #[serde(default)]
+    pub license: String,
+    #[serde(default = "BrewConfig::main_branch_name")]
+    pub head: String,
+    #[serde(default)]
+    pub test: String,
+    #[serde(default)]
+    pub caveats: String,
+    #[serde(default = "BrewConfig::default_commit_message")]
+    pub commit_message: String,
     pub commit_author: Option<CommitterConfig>,
     pub pull_request: Option<PullRequestConfig>,
+    pub repository: Repository,
+}
+
+impl BrewConfig {
+    fn main_branch_name() -> String {
+        MAIN_BRANCH_NAME.to_owned()
+    }
+
+    fn default_commit_message() -> String {
+        BREW_DEFAULT_COMMIT_MESSAGE.to_owned()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,11 +73,22 @@ pub struct PullRequestConfig {
     pub body: Option<String>,
     pub labels: Option<Vec<String>>,
     pub assignees: Option<Vec<String>>,
-    pub milestone: Option<u64>,
     #[serde(default)]
     pub draft: bool,
-    pub base: Option<String>,
-    pub head: Option<String>,
+    #[serde(default = "PullRequestConfig::default_base_branch_name")]
+    pub base: String,
+    #[serde(default = "PullRequestConfig::default_head_branch_name")]
+    pub head: String,
+}
+
+impl PullRequestConfig {
+    fn default_base_branch_name() -> String {
+        PR_DEFAULT_BASE_BRANCH_NAME.to_owned()
+    }
+
+    fn default_head_branch_name() -> String {
+        PR_DEFAULT_HEAD_BRANCH_NAME.to_owned()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

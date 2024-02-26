@@ -21,25 +21,22 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
-const DEFAULT_BASE_BRANCH_NAME: &str = "main";
-const DEFAULT_HEAD_BRANCH_NAME: &str = "bumps-formula-version";
-const DEFAULT_COMMIT_MESSAGE: &str = "update formula";
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Brew {
     pub name: String,
-    pub description: Option<String>,
-    pub homepage: Option<String>,
-    pub license: Option<String>,
+    pub description: String,
+    pub homepage: String,
+    pub license: String,
     pub head: String,
-    pub test: Option<String>,
-    pub caveats: Option<String>,
+    pub test: String,
+    pub caveats: String,
     pub commit_message: String,
     pub commit_author: Option<CommitterConfig>,
     pub install_info: Install,
     pub repository: Repository,
     #[serde(flatten)]
-    pub version: Tag,
+    #[serde(rename(serialize = "version"))]
+    pub tag: Tag,
     pub pull_request: Option<PullRequestConfig>,
     pub targets: Targets,
 }
@@ -52,15 +49,13 @@ impl Brew {
             homepage: brew.homepage,
             install_info: brew.install,
             repository: brew.repository,
-            version,
+            tag: version,
             targets: Targets::from(packages),
             license: brew.license,
-            head: brew.head.unwrap_or(DEFAULT_BASE_BRANCH_NAME.to_owned()),
+            head: brew.head,
             test: brew.test,
             caveats: brew.caveats,
-            commit_message: brew
-                .commit_message
-                .unwrap_or(DEFAULT_COMMIT_MESSAGE.to_owned()),
+            commit_message: brew.commit_message,
             commit_author: brew.commit_author,
             pull_request: brew.pull_request,
         }
@@ -130,22 +125,14 @@ fn captalize(mut string: String) -> String {
 async fn push_formula(brew: Brew) -> Result<()> {
     let pull_request = brew.pull_request.unwrap();
 
-    let committer: Committer = brew.commit_author.map(|c| c.into()).unwrap_or_default();
-
-    let head_branch = pull_request
-        .head
-        .unwrap_or(DEFAULT_HEAD_BRANCH_NAME.to_owned());
-
-    let base_branch = pull_request
-        .base
-        .unwrap_or(DEFAULT_BASE_BRANCH_NAME.to_owned());
+    let committer: Committer = brew.commit_author.map(Committer::from).unwrap_or_default();
 
     let repo_handler =
         github_client::instance().repo(&brew.repository.owner, &brew.repository.name);
 
     log::debug!("Creating branch");
     let sha = repo_handler
-        .branch(&base_branch)
+        .branch(&pull_request.base)
         .get_commit_sha()
         .await
         .context("error getting the base branch commit sha")?;
@@ -153,7 +140,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
     repo_handler
         .branches()
         .create()
-        .branch(&head_branch)
+        .branch(&pull_request.head)
         .sha(sha.sha)
         .execute()
         .await
@@ -163,7 +150,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
 
     log::debug!("Updating formula");
     repo_handler
-        .branch(&head_branch)
+        .branch(&pull_request.head)
         .upsert_file()
         .path(format!("{}.rb", brew.name))
         .message(brew.commit_message)
@@ -178,8 +165,8 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .pull_request()
         .create()
         .assignees(pull_request.assignees.unwrap_or_default())
-        .base(base_branch)
-        .head(head_branch)
+        .base(pull_request.base)
+        .head(&pull_request.head)
         .body(pull_request.body.unwrap_or_default())
         .labels(pull_request.labels.unwrap_or_default())
         .title(pull_request.title.unwrap_or_default())

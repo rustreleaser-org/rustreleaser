@@ -7,7 +7,8 @@ pub struct UpsertFileRequest {
     pub content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
-    pub sha: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sha: Option<String>,
     pub committer: CommitterRequest,
 }
 
@@ -16,7 +17,7 @@ impl UpsertFileRequest {
         message: String,
         content: String,
         branch: Option<String>,
-        sha: String,
+        sha: Option<String>,
         committer: CommitterRequest,
     ) -> Self {
         Self {

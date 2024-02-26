@@ -124,7 +124,7 @@ async fn multi(build_info: Build, release_info: ReleaseConfig) -> Result<Vec<Pac
             )?;
 
             let mut entry =
-                ArchOsMatrixEntry::new(arch, os, binary, &tag.value(), &build_info.compression);
+                ArchOsMatrixEntry::new(arch, os, binary, tag.value(), &build_info.compression);
 
             let target = format!("{}-{}", &arch.to_string(), &os.to_string());
 
@@ -230,7 +230,7 @@ async fn get_release_by_tag(release_info: ReleaseConfig, tag: &Tag) -> Result<Re
     github_client::instance()
         .repo(&release_info.owner, &release_info.repo)
         .releases()
-        .get_by_tag(&tag)
+        .get_by_tag(tag)
         .await
 }
 

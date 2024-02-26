@@ -4,9 +4,8 @@ use crate::{
     github::{asset::Asset, github_client},
 };
 use anyhow::{bail, Result};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct Release {
     pub owner: String,
     pub repo: String,

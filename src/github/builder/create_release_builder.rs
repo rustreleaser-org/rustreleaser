@@ -5,9 +5,9 @@ use anyhow::Result;
 pub struct CreateReleaseBuilder {
     pub owner: String,
     pub repo: String,
-    pub release_name: Option<String>,
-    pub release_tag: Option<Tag>,
-    pub target_branch: Option<String>,
+    pub release_name: String,
+    pub release_tag: Tag,
+    pub target_branch: String,
     pub draft: Option<bool>,
     pub prerelease: Option<bool>,
     pub body: Option<String>,
@@ -18,9 +18,9 @@ impl CreateReleaseBuilder {
         CreateReleaseBuilder {
             owner,
             repo,
-            release_name: None,
-            release_tag: None,
-            target_branch: None,
+            release_name: String::new(),
+            release_tag: Tag::empty(),
+            target_branch: String::new(),
             draft: None,
             prerelease: None,
             body: None,
@@ -31,12 +31,12 @@ impl CreateReleaseBuilder {
     where
         S: Into<String>,
     {
-        self.release_name = Some(release_name.into());
+        self.release_name = release_name.into();
         self
     }
 
     pub fn tag(mut self, release_tag: &Tag) -> Self {
-        self.release_tag = Some(release_tag.to_owned());
+        self.release_tag = release_tag.to_owned();
         self
     }
 
@@ -44,7 +44,7 @@ impl CreateReleaseBuilder {
     where
         S: Into<String>,
     {
-        self.target_branch = Some(target_branch.into());
+        self.target_branch = target_branch.into();
         self
     }
 
@@ -75,9 +75,9 @@ impl BuilderExecutor for CreateReleaseBuilder {
             .create_release(
                 &self.owner,
                 &self.repo,
-                &self.release_tag.unwrap(),
-                &self.target_branch.unwrap(),
-                &self.release_name.unwrap(),
+                &self.release_tag,
+                &self.target_branch,
+                &self.release_name,
                 self.draft.unwrap(),
                 self.prerelease.unwrap(),
                 &self.body.unwrap_or_default(),

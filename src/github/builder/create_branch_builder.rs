@@ -18,8 +18,8 @@ impl CreateBranchBuilder {
         CreateBranchBuilder {
             owner: owner.into(),
             repo: repo.into(),
-            branch: "".to_string(),
-            sha: "".to_string(),
+            branch: String::new(),
+            sha: String::new(),
         }
     }
 

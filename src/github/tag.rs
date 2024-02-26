@@ -23,4 +23,10 @@ impl Tag {
             &self.name
         }
     }
+
+    pub fn empty() -> Tag {
+        Tag {
+            name: "".to_string(),
+        }
+    }
 }

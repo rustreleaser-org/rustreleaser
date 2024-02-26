@@ -49,9 +49,8 @@ impl ResponseHandler for Result<reqwest::Response, reqwest::Error> {
                 if status.is_success() {
                     Ok(message)
                 } else {
-                    let error = ErrorResponse::new(message, status.as_u16());
-
-                    Err(error)
+                    log::warn!("Response message: {}", message);
+                    Ok(message)
                 }
             }
             Err(error) => Err(ErrorResponse::internal_server_error(

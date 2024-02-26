@@ -1,7 +1,10 @@
 use super::{
     asset::{Asset, UploadedAsset},
     handler::repository_handler::RepositoryHandler,
-    request::{branch_ref_request::BranchRefRequest, create_release_request::CreateReleaseRequest},
+    request::{
+        branch_ref_request::BranchRefRequest, create_release_request::CreateReleaseRequest,
+        pull_request_request::PullRquestRequest,
+    },
     response::{
         assignees_request::AssigneesRequest, labels_request::LabelsRequest,
         pull_request_response::PullRequest, release_response::ReleaseResponse, sha_response::Sha,
@@ -18,7 +21,7 @@ use anyhow::{Context, Result};
 use base64::{prelude::BASE64_STANDARD, Engine};
 use once_cell::sync::Lazy;
 use reqwest::multipart::{Form, Part};
-use std::{collections::HashMap, env};
+use std::env;
 
 pub static GITHUB_TOKEN: Lazy<String> =
     Lazy::new(|| env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set"));
@@ -83,7 +86,7 @@ impl GithubClient {
             asset
                 .checksum
                 .as_ref()
-                .unwrap_or(&"".to_string())
+                .unwrap_or(&String::default())
                 .to_owned(),
         )
     }
@@ -120,6 +123,7 @@ impl GithubClient {
         let uri = format!("https://api.github.com/repos/{}/{}/git/refs", owner, repo);
 
         let request = BranchRefRequest::new(branch.to_string(), sha.to_string());
+
         let body: String = serde_json::to_string(&request)?;
 
         post!(&uri, body)?;
@@ -127,7 +131,7 @@ impl GithubClient {
         Ok(())
     }
 
-    pub(super) async fn update_file(
+    pub(super) async fn upsert_file(
         &self,
         owner: &str,
         repo: &str,
@@ -139,32 +143,35 @@ impl GithubClient {
     ) -> Result<()> {
         let content = BASE64_STANDARD.encode(content.as_bytes());
 
-        let file_sha = get!(&format!(
+        let uri = &format!(
             "https://api.github.com/repos/{}/{}/contents/{}",
             owner, repo, path
-        ))
-        .context("failed to get Formula sha value")?;
+        );
+
+        let file_sha = get!(uri).context("failed to get Formula sha value")?;
 
         let sha = serde_json::from_str::<Sha>(&file_sha).unwrap_or_default();
 
         let body = if sha.sha.is_empty() {
+            log::debug!("creating new file");
+
+            let request =
+                UpsertFileRequest::new(commit_message, content, Some(head), None, committer.into());
+
+            serde_json::to_string(&request)?
+        } else {
+            log::debug!("updating file");
+
             let request = UpsertFileRequest::new(
                 commit_message,
                 content,
                 Some(head),
-                sha.sha,
+                Some(sha.sha),
                 committer.into(),
             );
 
             serde_json::to_string(&request)?
-        } else {
-            let request =
-                UpsertFileRequest::new(commit_message, content, None, sha.sha, committer.into());
-
-            serde_json::to_string(&request)?
         };
-
-        log::debug!("body: {}", body);
 
         let uri = format!(
             "https://api.github.com/repos/{}/{}/contents/{}",
@@ -183,27 +190,26 @@ impl GithubClient {
         title: &str,
         head: &str,
         base: &str,
-        pr_body: Option<String>,
-        assigness: Vec<String>,
+        pr_body: &str,
+        assignees: Vec<String>,
         labels: Vec<String>,
     ) -> Result<PullRequest> {
         let uri = format!("https://api.github.com/repos/{}/{}/pulls", owner, repo);
-        let pr_body = pr_body.unwrap_or("".to_string());
-        let mut body = HashMap::new();
 
-        body.insert("title", title);
-        body.insert("head", head);
-        body.insert("base", base);
-        body.insert("body", &pr_body);
-
-        let body: String = serde_json::to_string(&body)?;
+        let request = PullRquestRequest::new(
+            title.to_owned(),
+            head.to_owned(),
+            base.to_owned(),
+            pr_body.to_owned(),
+        );
+        let body: String = serde_json::to_string(&request)?;
 
         let response = post!(&uri, body)?;
 
         let pr: PullRequest = serde_json::from_str(&response)?;
 
-        if !assigness.is_empty() {
-            self.set_pr_assignees(owner, repo, pr.number, assigness)
+        if !assignees.is_empty() {
+            self.set_pr_assignees(owner, repo, pr.number, assignees)
                 .await?;
         }
 

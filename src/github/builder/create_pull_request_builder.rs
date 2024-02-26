@@ -12,8 +12,8 @@ pub struct CreatePullRequestBuilder {
     pub labels: Option<Vec<String>>,
     pub assignees: Option<Vec<String>>,
     pub committer: Option<Committer>,
-    pub base: Option<String>,
-    pub head: Option<String>,
+    pub base: String,
+    pub head: String,
 }
 
 impl CreatePullRequestBuilder {
@@ -29,8 +29,8 @@ impl CreatePullRequestBuilder {
             labels: None,
             assignees: None,
             committer: None,
-            base: None,
-            head: None,
+            base: String::new(),
+            head: String::new(),
         }
     }
 
@@ -69,7 +69,7 @@ impl CreatePullRequestBuilder {
     where
         S: Into<String>,
     {
-        self.base = Some(base.into());
+        self.base = base.into();
         self
     }
 
@@ -77,7 +77,7 @@ impl CreatePullRequestBuilder {
     where
         S: Into<String>,
     {
-        self.head = Some(head.into());
+        self.head = head.into();
         self
     }
 }
@@ -91,9 +91,9 @@ impl BuilderExecutor for CreatePullRequestBuilder {
                 &self.owner,
                 &self.repo,
                 &self.title,
-                &self.head.unwrap(),
-                &self.base.unwrap(),
-                self.body,
+                &self.head,
+                &self.base,
+                &self.body.unwrap_or_default(),
                 self.assignees.unwrap_or_default(),
                 self.labels.unwrap_or_default(),
             )
