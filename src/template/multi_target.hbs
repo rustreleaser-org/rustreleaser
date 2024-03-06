@@ -29,13 +29,13 @@ class {{ name }} < Formula
         {{ #if (eq arch "amd64") }}
         on_intel do
             url "{{ url }}"
-            hash "{{ hash }}"
+            sha256 "{{ hash }}"
         end
         {{ /if }}
         {{ #if (eq arch "arm64") }}
         on_arm do
             url "{{ url }}"
-            hash "{{ hash }}"
+            sha256 "{{ hash }}"
         end
         {{ /if }}
     {{ /each }}
@@ -47,13 +47,13 @@ class {{ name }} < Formula
         {{ #if (eq arch "amd64") }}
         on_intel do
             url "{{ url }}"
-            hash "{{ hash }}"
+            sha256 "{{ hash }}"
         end
         {{ /if }}
         {{ #if (eq arch "arm64") }}
         on_arm do
             url "{{ url }}"
-            hash "{{ hash }}"
+            sha256 "{{ hash }}"
         end
         {{ /if }}
     {{ /each }}

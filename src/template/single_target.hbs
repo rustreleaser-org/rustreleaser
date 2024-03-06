@@ -15,7 +15,7 @@ class {{ name }} < Formula
     license "{{ license }}"
     {{ /if }}
     url "{{ targets.0.Single.url }}"
-    hash "{{ targets.0.Single.hash }}"
+    sha256 "{{ targets.0.Single.hash }}"
 
     def install
         {{{ ../../install_info }}}
