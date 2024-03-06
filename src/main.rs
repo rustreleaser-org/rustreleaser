@@ -35,12 +35,10 @@ async fn main() -> Result<()> {
 
     build::build(&build_info, opts.path.clone(), opts.dry_run).await?;
 
-    let release_info = config.release;
-
     log::info!("Creating release");
     let packages = github::release(
         &build_info,
-        &release_info,
+        &config.release.clone(),
         opts.path.clone(),
         opts.dry_run,
         &opts.output,
@@ -51,6 +49,7 @@ async fn main() -> Result<()> {
         log::info!("Creating brew formula");
         brew::release(
             config.brew.unwrap(),
+            config.release.clone(),
             packages,
             Template::from(build_info),
             opts.path.clone(),
