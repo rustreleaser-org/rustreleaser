@@ -15,7 +15,7 @@ class {{ name }} < Formula
     {{ /if }}
     version "{{ version }}"
     {{ #if url }}
-    url "{{ url }}/archive/refs/tags/v{{ version }}.tar.gz"
+    url "{{ url }}"
     {{ /if }}
     {{ #if hash }}
     sha256 "{{ hash }}"
