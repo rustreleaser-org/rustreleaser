@@ -1,9 +1,9 @@
 - [ ] create a README.md
-- [ ] create an email and user for default committer
+- [x] create an email and user for default committer
 - [ ] create a changelog for release
 - [ ] create custom exceptions
 - [ ] create http error response exceptions
-- [ ] build the cargo project
-- [ ] create cli commands
-- [ ] create `publish to cargo` flow
+- [x] build the cargo project
+- [x] create cli commands
+- [x] create `publish to cargo` flow
 - [ ] unit tests
