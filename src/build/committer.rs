@@ -7,8 +7,8 @@ pub struct Committer {
 impl Default for Committer {
     fn default() -> Self {
         Committer {
-            author: "Rafael Vigo".to_string(),
-            email: "rvigo07+github@gmail.com".to_string(),
+            author: "rust-releaser".to_string(),
+            email: "rust-releaser@github.com".to_string(),
         }
     }
 }
