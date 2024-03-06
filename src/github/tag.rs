@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tag {
     #[serde(rename = "version")]
-    name: String,
+    pub name: String,
 }
 
 impl Tag {

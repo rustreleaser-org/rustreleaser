@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::{asset::UploadedAsset, generate_checksum_asset, tag::Tag};
 use crate::{
     brew::package::Package,
@@ -26,7 +28,12 @@ impl Release {
         }
     }
 
-    pub async fn upload_assets(&self, assets: Vec<Asset>, tag: &Tag) -> Result<Vec<UploadedAsset>> {
+    pub async fn upload_assets(
+        &self,
+        assets: Vec<Asset>,
+        tag: &Tag,
+        output_path: &PathBuf,
+    ) -> Result<Vec<UploadedAsset>> {
         let mut uploaded = vec![];
         for asset in assets {
             let uploaded_asset = github_client::instance()
@@ -35,7 +42,7 @@ impl Release {
             log::debug!("Uploaded asset: {:#?}", uploaded_asset);
             uploaded.push(uploaded_asset);
 
-            if let Err(err) = self.upload_checksum_asset(&asset, tag).await {
+            if let Err(err) = self.upload_checksum_asset(&asset, tag, output_path).await {
                 bail!(err)
             }
         }
@@ -43,8 +50,13 @@ impl Release {
         Ok(uploaded)
     }
 
-    async fn upload_checksum_asset(&self, asset: &Asset, tag: &Tag) -> Result<()> {
-        let checksum_asset = generate_checksum_asset(asset)?;
+    async fn upload_checksum_asset(
+        &self,
+        asset: &Asset,
+        tag: &Tag,
+        output_path: &PathBuf,
+    ) -> Result<()> {
+        let checksum_asset = generate_checksum_asset(asset, output_path)?;
         let ua = github_client::instance()
             .upload_asset(&checksum_asset, &self.owner, tag, &self.repo, self.id)
             .await?;

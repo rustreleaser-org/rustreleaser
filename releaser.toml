@@ -1,0 +1,22 @@
+[build]
+arch = ["amd64", "arm64"]
+os = ["darwin", "linux"]
+binary = "ppr"
+
+[brew]
+name = "papier"
+description = "A perfectly inconvenient editor, written in Rust."
+homepage = "https://github.com/cestef/papier"
+install = "bin.install 'ppr'"
+license = "MIT"
+repository = { owner = "cestef", name = "homebrew-tap" }
+path = "formula"
+commit_message = "Update papier to {{version}}"
+
+[release]
+owner = "cestef"
+repo = "papier"
+target_branch = "main"
+
+[crates_io]
+packages = ["edtui-papier", "papier"]

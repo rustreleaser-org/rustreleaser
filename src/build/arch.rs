@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Arch {
-    #[serde(rename(deserialize = "x86_64"))]
-    #[serde(rename(deserialize = "amd64"))]
     Amd64,
     Arm,
     Arm64,

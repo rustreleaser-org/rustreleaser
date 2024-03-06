@@ -6,7 +6,7 @@ pub struct Package {
     pub name: String,
     pub os: Option<Os>,
     pub arch: Option<Arch>,
-    pub url: String,
+    pub url: Option<String>,
     pub sha256: String,
 }
 
@@ -15,7 +15,7 @@ impl Package {
         name: String,
         os: Option<Os>,
         arch: Option<Arch>,
-        url: String,
+        url: Option<String>,
         sha256: String,
     ) -> Self {
         Self {

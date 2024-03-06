@@ -19,7 +19,7 @@ class {{ repo }} < Formula
     {{ #if (eq Multi.os "UnknownLinuxGnu") }}
     on_linux do
         {{ #each Multi.archs}}
-        {{ #if (eq arch "Amd64") }}
+        {{ #if (eq arch "amd64") }}
         if Hardware::CPU.intel?
             url "{{ url }}"
             hash "{{ hash }}"
@@ -29,7 +29,7 @@ class {{ repo }} < Formula
             end
         end
         {{ /if }}
-        {{ #if (eq arch "Arm64") }}
+        {{ #if (eq arch "arm64") }}
         if Hardware::CPU.arm?
             url "{{ url }}"
             hash "{{ hash }}"
@@ -45,7 +45,7 @@ class {{ repo }} < Formula
     {{ #if (eq Multi.os "AppleDarwin") }}
     on_macos do
     {{ #each Multi.archs }}
-        {{ #if (eq arch "Amd64") }}
+        {{ #if (eq arch "amd64") }}
         if Hardware::CPU.intel?
             url "{{ url }}"
             hash "{{ hash }}"
@@ -55,7 +55,7 @@ class {{ repo }} < Formula
             end
         end
         {{ /if }}
-        {{ #if (eq arch "Arm64") }}
+        {{ #if (eq arch "arm64") }}
         if Hardware::CPU.arm?
             url "{{ url }}"
             hash "{{ hash }}"

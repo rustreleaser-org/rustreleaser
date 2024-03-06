@@ -19,6 +19,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use base64::{prelude::BASE64_STANDARD, Engine};
+use log::debug;
 use once_cell::sync::Lazy;
 use reqwest::multipart::{Form, Part};
 use std::env;
@@ -266,8 +267,9 @@ impl GithubClient {
         );
 
         let response = get!(&uri)?;
-        let release = serde_json::from_str::<ReleaseResponse>(&response)?;
 
+        let release = serde_json::from_str::<ReleaseResponse>(&response)?;
+        debug!("release: {:#?}", release);
         Ok(Release::new(release.id, owner, repo))
     }
 

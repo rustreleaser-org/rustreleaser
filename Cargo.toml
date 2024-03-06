@@ -23,3 +23,6 @@ hex = "0.4"
 itertools = "0.11.0"
 base64 = "0.21.7"
 thiserror = "1.0.57"
+config = "0.14.0"
+clap = { version = "4.5.1", features = ["derive"] }
+semver = "1.0.22"

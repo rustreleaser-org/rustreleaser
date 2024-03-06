@@ -19,7 +19,7 @@ use crate::{
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::{fs, path::PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Brew {
@@ -39,6 +39,7 @@ pub struct Brew {
     pub tag: Tag,
     pub pull_request: Option<PullRequestConfig>,
     pub targets: Targets,
+    pub path: Option<String>,
 }
 
 impl Brew {
@@ -58,6 +59,7 @@ impl Brew {
             commit_message: brew.commit_message,
             commit_author: brew.commit_author,
             pull_request: brew.pull_request,
+            path: brew.path,
         }
     }
 }
@@ -73,29 +75,40 @@ pub async fn release(
     brew_config: BrewConfig,
     packages: Vec<Package>,
     template: Template,
+    base: PathBuf,
+    dry_run: bool,
+    output_path: &PathBuf,
 ) -> Result<String> {
-    let brew = Brew::new(brew_config, git::get_current_tag()?, packages);
+    let brew = Brew::new(brew_config, git::get_current_tag(&base)?, packages);
 
     log::debug!("Rendering Formula template {}", template.to_string());
     let data = serialize_brew(&brew, template)?;
 
-    write_file(format!("{}.rb", brew.name), &data)?;
+    write_file(output_path.join(format!("{}.rb", brew.name)), &data)?;
 
-    if brew.pull_request.is_some() {
-        log::debug!("Creating pull request");
-        push_formula(brew).await?;
+    if !dry_run {
+        if brew.pull_request.is_some() {
+            log::debug!("Creating pull request");
+            push_formula(brew).await?;
+        } else {
+            log::debug!("Committing file to head branch");
+            github_client::instance()
+                .repo(&brew.repository.owner, &brew.repository.name)
+                .branch(&brew.head)
+                .upsert_file()
+                .path(if brew.path.is_some() {
+                    format!("{}/{}.rb", brew.path.unwrap(), brew.name)
+                } else {
+                    format!("{}.rb", brew.name)
+                })
+                .message(brew.commit_message.replace("{{version}}", &brew.tag.name))
+                .content(&data)
+                .execute()
+                .await
+                .context("error uploading file to main branch")?;
+        }
     } else {
-        log::debug!("Committing file to head branch");
-        github_client::instance()
-            .repo(&brew.repository.owner, &brew.repository.name)
-            .branch(&brew.head)
-            .upsert_file()
-            .path(format!("{}.rb", brew.name))
-            .message(brew.commit_message)
-            .content(&data)
-            .execute()
-            .await
-            .context("error uploading file to main branch")?;
+        log::debug!("Dry run, not pushing to github or creating pull request");
     }
 
     Ok(data)
@@ -110,11 +123,11 @@ where
     Ok(rendered)
 }
 
-fn write_file<S>(file_name: String, data: S) -> Result<()>
+fn write_file<S>(path: PathBuf, data: S) -> Result<()>
 where
     S: Into<String>,
 {
-    fs::write(file_name, data.into())?;
+    fs::write(path, data.into())?;
     Ok(())
 }
 
@@ -153,7 +166,7 @@ async fn push_formula(brew: Brew) -> Result<()> {
         .branch(&pull_request.head)
         .upsert_file()
         .path(format!("{}.rb", brew.name))
-        .message(brew.commit_message)
+        .message(brew.commit_message.replace("{{version}}", &brew.tag.name))
         .content(content)
         .committer(&committer)
         .execute()
@@ -184,7 +197,7 @@ impl From<Vec<Package>> for Targets {
             vec![]
         } else if value[0].arch.is_none() && value[0].os.is_none() {
             let target = vec![Target::Single(SingleTarget {
-                url: value[0].url.clone(),
+                url: value[0].url.clone().unwrap_or_default(),
                 hash: value[0].sha256.clone(),
             })];
             target
@@ -200,7 +213,7 @@ impl From<Vec<Package>> for Targets {
                         .1
                         .map(|p| BrewArch {
                             arch: p.arch.to_owned().unwrap(),
-                            url: p.url.clone(),
+                            url: p.url.clone().unwrap_or_default(),
                             hash: p.sha256.clone(),
                         })
                         .collect(),
