@@ -11,7 +11,7 @@ use self::{
 };
 use crate::{
     build::{arch::Arch, committer::Committer},
-    config::{BrewConfig, CommitterConfig, PullRequestConfig},
+    config::{BrewConfig, CommitterConfig, PullRequestConfig, ReleaseConfig},
     git,
     github::{builder::BuilderExecutor, github_client, tag::Tag},
     http,
@@ -47,8 +47,16 @@ pub struct Brew {
 }
 
 impl Brew {
-    pub async fn new(brew: BrewConfig, version: Tag, packages: Vec<Package>) -> Result<Brew> {
-        let url = brew.repository.url();
+    pub async fn new(
+        brew: BrewConfig,
+        release_config: ReleaseConfig,
+        version: Tag,
+        packages: Vec<Package>,
+    ) -> Result<Brew> {
+        let url = format!(
+            "https://github.com/{}/{}/archive/refs/tags/v{}.tar.gz",
+            release_config.owner, release_config.repo, version.name
+        );
         let hash = {
             let mut hasher = sha2::Sha256::new();
             let bytes = http::HttpClient::new()
@@ -65,7 +73,7 @@ impl Brew {
             description: brew.description,
             homepage: brew.homepage,
             install_info: brew.install,
-            repository: brew.repository.clone(),
+            repository: brew.repository,
             tag: version,
             targets: Targets::from(packages),
             license: brew.license,
@@ -76,7 +84,7 @@ impl Brew {
             commit_author: brew.commit_author,
             pull_request: brew.pull_request,
             path: brew.path,
-            url: brew.repository.url(),
+            url,
             hash,
         })
     }
@@ -91,13 +99,20 @@ pub struct BrewArch {
 
 pub async fn release(
     brew_config: BrewConfig,
+    release_config: ReleaseConfig,
     packages: Vec<Package>,
     template: Template,
     base: PathBuf,
     dry_run: bool,
     output_path: &PathBuf,
 ) -> Result<String> {
-    let brew = Brew::new(brew_config, git::get_current_tag(&base)?, packages).await?;
+    let brew = Brew::new(
+        brew_config,
+        release_config,
+        git::get_current_tag(&base)?,
+        packages,
+    )
+    .await?;
 
     log::debug!("Rendering Formula template {}", template.to_string());
     let data = serialize_brew(&brew, template)?;
