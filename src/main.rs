@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
 
     let build_info = config.build;
 
-    log::info!("Building");
+    log::info!("Building with {:?}", build_info.tool);
 
     build::build(&build_info, opts.path.clone(), opts.dry_run).await?;
 
