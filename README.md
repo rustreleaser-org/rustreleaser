@@ -27,3 +27,26 @@ Release automation for Rust projects. The missing [`goreleaser`](https://gorelea
   - [ ] [S3](https://aws.amazon.com/s3)
 - [ ] Changelog generation
 
+## Installation
+
+```bash
+cargo install rustreleaser
+```
+
+## Usage
+
+```ansi
+A tool to easily release Rust projects to GitHub, Homebrew and crates.io
+
+Usage: rr [OPTIONS] [PATH]
+
+Arguments:
+  [PATH]  Path to the project [default: .]
+
+Options:
+  -c, --config <CONFIG>  Path to the config file [default: releaser.toml]
+  -d, --dry-run          Dry run (do not upload anything)
+  -o, --output <OUTPUT>  Output directory for temporary files [default: .]
+  -h, --help             Print help
+  -V, --version          Print version
+```
