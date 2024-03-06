@@ -14,11 +14,13 @@ use crate::{
     config::{BrewConfig, CommitterConfig, PullRequestConfig},
     git,
     github::{builder::BuilderExecutor, github_client, tag::Tag},
+    http,
     template::{handlebars, Template},
 };
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use std::{fs, path::PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,16 +42,30 @@ pub struct Brew {
     pub pull_request: Option<PullRequestConfig>,
     pub targets: Targets,
     pub path: Option<String>,
+    pub url: String,
+    pub hash: String,
 }
 
 impl Brew {
-    pub fn new(brew: BrewConfig, version: Tag, packages: Vec<Package>) -> Brew {
-        Brew {
+    pub async fn new(brew: BrewConfig, version: Tag, packages: Vec<Package>) -> Result<Brew> {
+        let url = brew.repository.url();
+        let hash = {
+            let mut hasher = sha2::Sha256::new();
+            let bytes = http::HttpClient::new()
+                .get(&url)
+                .send()
+                .await?
+                .bytes()
+                .await?;
+            hasher.update(&bytes);
+            format!("{:x}", hasher.finalize())
+        };
+        Ok(Brew {
             name: captalize(brew.name),
             description: brew.description,
             homepage: brew.homepage,
             install_info: brew.install,
-            repository: brew.repository,
+            repository: brew.repository.clone(),
             tag: version,
             targets: Targets::from(packages),
             license: brew.license,
@@ -60,7 +76,9 @@ impl Brew {
             commit_author: brew.commit_author,
             pull_request: brew.pull_request,
             path: brew.path,
-        }
+            url: brew.repository.url(),
+            hash,
+        })
     }
 }
 
@@ -79,7 +97,7 @@ pub async fn release(
     dry_run: bool,
     output_path: &PathBuf,
 ) -> Result<String> {
-    let brew = Brew::new(brew_config, git::get_current_tag(&base)?, packages);
+    let brew = Brew::new(brew_config, git::get_current_tag(&base)?, packages).await?;
 
     log::debug!("Rendering Formula template {}", template.to_string());
     let data = serialize_brew(&brew, template)?;
