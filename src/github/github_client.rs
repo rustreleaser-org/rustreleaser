@@ -68,7 +68,7 @@ impl GithubClient {
         form!(uri, form)?;
 
         let asset_url = format!(
-            "https://github.com/{}/{}/releases/download/v{}/{}",
+            "https://github.com/{}/{}/releases/download/{}/{}",
             &owner,
             &repo,
             tag.strip_v_prefix(),
