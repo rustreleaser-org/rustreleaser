@@ -7,7 +7,7 @@ edition = "2021"
 repository = "https://github.com/cestef/rustreleaser"
 license = "MIT"
 readme = "README.md"
-keywords = ["release", "github", "homebrew", "crates.io"]
+keywords = ["release", "github", "homebrew", "cratesio"]
 
 [[bin]]
 name = "rr"
