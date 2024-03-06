@@ -4,6 +4,10 @@ description = "A tool to easily release Rust projects to GitHub, Homebrew and cr
 authors = ["cstef <root@cstef.dev>"]
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/cestef/rustreleaser"
+license = "MIT"
+readme = "README.md"
+keywords = ["release", "github", "homebrew", "crates.io", "cargo", "rust"]
 
 [[bin]]
 name = "rr"
@@ -35,5 +39,5 @@ itertools = "0.11.0"
 base64 = "0.21.7"
 thiserror = "1.0.57"
 config = "0.14.0"
-clap = { version = "4.5.1", features = ["derive"] }
+clap = { version = "4.5.1", features = ["derive", "color"] }
 semver = "1.0.22"

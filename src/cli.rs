@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use clap::Parser;
 #[derive(Parser, Debug)]
-#[clap(name = "rust-releaser", version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
+#[clap(about, author, version, name = "rust-releaser")]
 pub struct Opts {
     /// Path to the project
+    #[clap(default_value = ".")]
     pub path: PathBuf,
     /// Path to the config file
     #[clap(short, long, default_value = "releaser.toml")]
