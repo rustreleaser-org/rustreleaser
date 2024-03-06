@@ -252,7 +252,7 @@ fn zip_file(binary_name: &str, output_path: &PathBuf, binary_path: PathBuf) -> R
     archive.append_file(binary_name, &mut file)?;
 
     let compressed_file = File::create(output_path)?;
-    let mut encoder = GzEncoder::new(compressed_file, Compression::Default);
+    let mut encoder = GzEncoder::new(compressed_file, Compression::default());
     encoder.write_all(&archive.into_inner()?)?;
 
     encoder.finish()?;
