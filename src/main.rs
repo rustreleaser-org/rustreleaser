@@ -80,6 +80,7 @@ async fn main() -> Result<()> {
                 cmd.arg("--index").arg(crates_io.clone().index.unwrap());
             }
             cmd.arg("--package").arg(package);
+
             cmd.status().await?;
         }
     }

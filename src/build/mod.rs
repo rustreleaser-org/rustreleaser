@@ -58,6 +58,7 @@ pub async fn build(build_info: &Build, path: PathBuf, dry_run: bool) -> Result<(
         log::info!("Building for multiple targets");
         for arch in build_info.arch.as_ref().unwrap_or(&vec![]) {
             for os in build_info.os.as_ref().unwrap_or(&vec![]) {
+                log::debug!("Building for arch: {:?} and os: {:?}", arch, os);
                 build_target(&build_info, &path, &arch, &os, dry_run).await?;
             }
         }
