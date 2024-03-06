@@ -96,7 +96,7 @@ async fn single(
         base.join(format!("{}/{}", SINGLE_TARGET_DIR, build_info.binary)),
     )?;
 
-    let path = PathBuf::from(binary_name.to_owned());
+    let path = output_path.join(binary_name.to_owned());
 
     // create an asset
     log::debug!("creating asset");
