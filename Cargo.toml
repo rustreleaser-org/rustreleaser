@@ -1,5 +1,7 @@
 [package]
 name = "rustreleaser"
+description = "A tool to easily release Rust projects to GitHub, Homebrew and crates.io"
+authors = ["cstef <root@cstef.dev>"]
 version = "0.1.0"
 edition = "2021"
 

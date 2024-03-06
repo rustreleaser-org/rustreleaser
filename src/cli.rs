@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 #[derive(Parser, Debug)]
+#[clap(name = "rust-releaser", version = env!("CARGO_PKG_VERSION"), author = env!("CARGO_PKG_AUTHORS"), about = env!("CARGO_PKG_DESCRIPTION"))]
 pub struct Opts {
     /// Path to the project
     pub path: PathBuf,
