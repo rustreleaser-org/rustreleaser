@@ -8,6 +8,12 @@ pub enum Os {
     UnknownLinuxGnu,
 }
 
+impl Os {
+    pub fn current() -> Self {
+        std::env::consts::OS.to_string().into()
+    }
+}
+
 impl From<String> for Os {
     fn from(value: String) -> Self {
         match value.to_lowercase().as_str() {

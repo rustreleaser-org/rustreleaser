@@ -1,5 +1,5 @@
 /target
 .env
-config.yaml
 .vscode
 /dist
+releaser.toml

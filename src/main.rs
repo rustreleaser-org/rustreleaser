@@ -9,7 +9,7 @@ mod http;
 mod logger;
 mod template;
 
-use std::process::Command;
+use tokio::process::Command;
 
 use crate::{cli::Opts, template::Template};
 use anyhow::Result;
@@ -30,6 +30,11 @@ async fn main() -> Result<()> {
     }
 
     let build_info = config.build;
+
+    log::info!("Building");
+
+    build::build(&build_info, opts.path.clone(), opts.dry_run).await?;
+
     let release_info = config.release;
 
     log::info!("Creating release");
@@ -75,7 +80,7 @@ async fn main() -> Result<()> {
                 cmd.arg("--index").arg(crates_io.clone().index.unwrap());
             }
             cmd.arg("--package").arg(package);
-            cmd.status()?;
+            cmd.status().await?;
         }
     }
 

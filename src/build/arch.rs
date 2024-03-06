@@ -8,6 +8,12 @@ pub enum Arch {
     Arm64,
 }
 
+impl Arch {
+    pub fn current() -> Self {
+        std::env::consts::ARCH.to_string().into()
+    }
+}
+
 impl From<String> for Arch {
     fn from(value: String) -> Self {
         match value.to_lowercase().as_str() {
