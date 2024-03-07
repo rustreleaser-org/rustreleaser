@@ -2,7 +2,7 @@
 name = "rustreleaser"
 description = "A tool to easily release Rust projects to GitHub, Homebrew and crates.io"
 authors = ["cstef <root@cstef.dev>"]
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 repository = "https://github.com/cestef/rustreleaser"
 license = "MIT"
