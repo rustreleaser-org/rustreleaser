@@ -13,16 +13,19 @@ use super::{
 };
 use crate::{
     build::committer::Committer,
-    form, get,
-    github::{release::Release, request::upsert_file_request::UpsertFileRequest},
+    get,
+    github::{macros::Headers, release::Release, request::upsert_file_request::UpsertFileRequest},
+    http::HttpClient,
     post, put,
 };
 use anyhow::{Context, Result};
 use base64::{prelude::BASE64_STANDARD, Engine};
 use log::debug;
+use mime_guess::from_path;
 use once_cell::sync::Lazy;
-use reqwest::multipart::{Form, Part};
-use std::env;
+use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use std::{env, path::Path};
+use tokio::{fs::File, io::AsyncReadExt};
 
 pub static GITHUB_TOKEN: Lazy<String> =
     Lazy::new(|| env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set"));
@@ -51,21 +54,35 @@ impl GithubClient {
         repo: impl Into<String>,
         release_id: u64,
     ) -> Result<UploadedAsset> {
-        let content: Vec<u8> = tokio::fs::read(&asset.path).await?;
-
-        let part = Part::bytes(content).file_name(asset.name.to_owned());
-
-        let form = Form::new().part("data-binary", part);
-
         let owner = owner.into();
         let repo = repo.into();
 
-        let uri = format!(
+        let path = Path::new(&asset.path);
+        let mut file = File::open(&path).await?;
+        let metadata = file.metadata().await?;
+        let content_length = metadata.len();
+        let content_type = from_path(&path)
+            .first_or_octet_stream()
+            .as_ref()
+            .to_string();
+
+        let url = format!(
             "https://uploads.github.com/repos/{}/{}/releases/{}/assets?name={}",
-            &owner, &repo, release_id, asset.name
+            owner, repo, release_id, asset.name
         );
 
-        form!(uri, form)?;
+        let mut buf: Vec<u8> = vec![];
+        file.read_to_end(&mut buf).await?;
+        let res = HttpClient::new()
+            .post(url)
+            .default_headers()
+            .header(CONTENT_LENGTH, content_length.to_string())
+            .header(CONTENT_TYPE, content_type)
+            .body(buf)
+            .send()
+            .await?;
+
+        debug!("upload asset response: {:#?}", res);
 
         let asset_url = format!(
             "https://github.com/{}/{}/releases/download/{}/{}",

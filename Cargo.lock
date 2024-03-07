@@ -1191,6 +1191,7 @@ dependencies = [
  "hex",
  "itertools",
  "log",
+ "mime_guess",
  "once_cell",
  "reqwest",
  "semver",

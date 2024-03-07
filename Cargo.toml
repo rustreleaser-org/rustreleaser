@@ -41,3 +41,4 @@ thiserror = "1.0.57"
 config = "0.14.0"
 clap = { version = "4.5.1", features = ["derive", "color"] }
 semver = "1.0.22"
+mime_guess = "2.0.4"
