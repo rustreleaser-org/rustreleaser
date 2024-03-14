@@ -1,11 +1,11 @@
 <p align="center">
-    <img src="assets/header.png" alt="papier" />
+    <img src="assets/header.png" alt="rustreleaser-header" />
 </p>
 
-<!-- [![Crates.io](https://img.shields.io/crates/v/papier)](https://crates.io/crates/rwalk) -->
+[![Crates.io](https://img.shields.io/crates/v/rustreleaser)](https://crates.io/crates/rustreleaser)
 [![GitHub](https://img.shields.io/github/license/cestef/rustreleaser)](LICENSE)
-<!-- [![Release](https://img.shields.io/github/v/release/cestef/papier)](https://github.com/cestef/rwalk/releases/latest) -->
-<!-- [![Homebrew](https://img.shields.io/homebrew/v/papier)](https://formulae.brew.sh/formula/papier) -->
+[![Release](https://img.shields.io/github/v/release/cestef/rustreleaser)](https://github.com/cestef/rustreleaser/releases/latest)
+[![Homebrew](https://img.shields.io/homebrew/v/rustreleaser)](https://formulae.brew.sh/formula/rustreleaser)
 
 Release automation for Rust projects. The missing [`goreleaser`](https://goreleaser.com) for Rust.
 
@@ -36,7 +36,7 @@ cargo install rustreleaser
 ## Usage
 
 ```ansi
-A tool to easily release Rust projects to GitHub, Homebrew and crates.io
+A tool to easily release Rust projects to GitHub, Homebrew, and crates.io
 
 Usage: rr [OPTIONS] [PATH]
 
